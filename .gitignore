@@ -1,0 +1,39 @@
+node_modules
+dist
+dist-ssr
+.vite
+.DS_Store
+*.log
+.env
+.env.local
+.env.*.local
+
+# Generated artifacts (do NOT track)
+src/routeTree.gen.ts
+src/routeTree.gen.ts.snap
+
+# Cache / tool runtime
+.cache
+.turbo
+.next
+.tanstack
+
+# Build outputs
+coverage/
+*.tsbuildinfo
+.eslintcache
+.vitest-cache
+dist/
+
+# Local SQLite + uploaded blobs
+data/*.db
+data/*.db-*
+data/uploads/
+!data/.gitkeep
+
+# OS / IDE noise
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json

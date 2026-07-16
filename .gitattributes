@@ -1,0 +1,12 @@
+# Treat every text file as text, but force LF line endings everywhere
+# (CI runs on Linux; Windows contributors will keep CRLF only in their
+# working copies — git's CRLF normalization handles both directions).
+* text=auto eol=lf
+
+# Scripts that must keep CRLF on Windows runners
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Vendored / generated lockfiles stay as-is
+package-lock.json -diff

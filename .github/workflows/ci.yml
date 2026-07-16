@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Cancel an in-flight run for the same PR / branch when a new commit lands.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  build:
+    name: lint + typecheck + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate route tree
+        # `prebuild` / `pretypecheck` already invoke `tsr generate`, but
+        # running it explicitly here makes a route-tree failure surface as
+        # its own CI step with a clear name instead of being folded into
+        # the typecheck output.
+        run: npx tsr generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        # Frontend bundle + compiled server both land under dist/ and
+        # server-build/; `build:all` is the explicit umbrella so a server
+        # compile regression is caught here, not on the next tagged release.
+        run: npm run build:all
+
+      # Guard against accidentally shipping the local SQLite file. The
+      # build never writes one in CI, but tracking it in git would push
+      # the demo seed (or worse, real data) into the repo.
+      - name: Verify no DB files committed
+        run: |
+          if git ls-files --error-unmatch data/*.db 2>/dev/null; then
+            echo "::error::A *.db file is tracked under data/. Add it to .gitignore and untrack it."
+            exit 1
+          fi
+
+      - name: Upload build artifacts
+        # Keep failed-PR debugging cheap: the Vite bundle and the compiled
+        # server are small and u001 / u002 are usually what someone needs
+        # to reproduce a UI bug.
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipam-build-${{ github.sha }}
+          path: |
+            dist
+            server-build
+          if-no-files-found: error
+          retention-days: 7

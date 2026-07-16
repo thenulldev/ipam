@@ -24,6 +24,7 @@ coverage/
 .eslintcache
 .vitest-cache
 dist/
+server-build/
 
 # Local SQLite + uploaded blobs
 data/*.db
@@ -37,3 +38,6 @@ Thumbs.db
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json
+
+# Paperclip workspace helpers (not part of the app)
+.paperclip/

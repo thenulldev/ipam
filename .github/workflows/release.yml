@@ -1,0 +1,151 @@
+name: Release
+
+# Fires on any tag matching vMAJOR.MINOR.PATCH (e.g. v0.1.0, v1.2.3-rc.1).
+# Build artifacts: the Vite bundle under dist/ + the compiled Hono server.
+# Publishes a Docker image when registry secrets are present; otherwise it
+# uploads the build artifacts as a GitHub Release and exits cleanly so the
+# tag push itself is still a successful release.
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+
+# A tag should only release once; do not cancel an in-flight release for the
+# same tag. New tags get their own run.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # The release artifact needs the tag, not just the branch tip.
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate route tree
+        run: npx tsr generate
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build Vite bundle
+        run: npm run build
+
+      - name: Build Hono server
+        # Compile the server to plain JS so the release artifact (and the
+        # Docker image's runtime stage) can run with stock `node` and we
+        # don't need `tsx` in production deps.
+        run: npm run build:server
+
+      - name: Package release artifact
+        run: |
+          mkdir -p out
+          tar --exclude=node_modules \
+              --exclude=.git \
+              --exclude=dist-ssr \
+              --exclude='*.tsbuildinfo' \
+              -czf out/ipam-${{ github.ref_name }}.tar.gz \
+              dist server-build package.json package-lock.json README.md
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipam-${{ github.ref_name }}
+          path: out/ipam-${{ github.ref_name }}.tar.gz
+          if-no-files-found: error
+
+  docker:
+    name: Docker image
+    # Only build/push the image when registry access is configured. Without
+    # secrets/vars the release still ships via the GitHub Release artifact;
+    # this job is skipped entirely so an external registry isn't a
+    # hard requirement to cut a tag.
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: ${{ vars.IPAM_PUSH_DOCKER == 'true' || (secrets.IPAM_DOCKER_USERNAME != '' && secrets.IPAM_DOCKER_PASSWORD != '') }}
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        # The Dockerfile is a multi-stage build of the repo at the tag, so
+        # we don't need the build artifact — `context: .` below reads the
+        # source tree directly.
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.IPAM_DOCKER_REGISTRY || 'ghcr.io' }}
+          username: ${{ secrets.IPAM_DOCKER_USERNAME }}
+          password: ${{ secrets.IPAM_DOCKER_PASSWORD }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ vars.IPAM_DOCKER_REGISTRY || 'ghcr.io' }}/${{ github.repository }}
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  github-release:
+    name: GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ipam-${{ github.ref_name }}
+          path: out
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: out/ipam-${{ github.ref_name }}.tar.gz

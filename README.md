@@ -1,191 +1,175 @@
-# IPAM & Rack Documentation
+# IPAM
 
-PatchDocs-style frontend for IPAM, rack/patch, and floorplan documentation.
-Multi-tenant, frontend-only, in-memory store.
+Multi-tenant **IPAM, rack, and patch documentation** app. Visual rack views,
+floorplans, and an IPAM tree backed by a Hono + Drizzle (SQLite) server, with
+a React 19 + Vite client.
 
-## Quick start
+> Status: **MVP scaffold**. The PR bar and contributor workflow live in
+> [CONTRIBUTING.md](./CONTRIBUTING.md). Read that before opening a PR.
+
+---
+
+## Quick start (≤ 10 minutes)
+
+Requires **Node 22** and **npm 10+**. No other system dependencies — the
+database is SQLite, the runtime is Node.
 
 ```bash
+# 1. Clone
+git clone <repo-url> ipam
+cd ipam
+
+# 2. Install (npm ci is faster once a lockfile exists)
 npm install
+
+# 3. Generate the route tree + start both the API and the web dev server
 npm run dev
 ```
 
-App lives at <http://localhost:5173>. Press **⌘K / Ctrl+K** anywhere for the
-global search palette.
+Open <http://localhost:5173>. The Hono API lives on
+<http://localhost:8787/api> and the Vite dev server proxies API requests to
+it (`/api/*` → `http://localhost:8787`).
 
-## Scripts
+On first boot the server seeds an empty SQLite database at `data/ipam.db`
+with one demo tenant and a handful of racks/devices/prefixes so the UI has
+something to render.
 
-| Script              | Purpose                                                       |
-| ------------------- | ------------------------------------------------------------- |
-| `npm run dev`       | Vite dev server with HMR                                      |
-| `npm run build`     | Typecheck + production build                                  |
-| `npm run preview`   | Preview built bundle                                          |
-| `npm run typecheck` | TypeScript project build                                      |
+### Useful one-offs
 
-`tsr generate` runs automatically before `build` and `typecheck`. Output:
-`src/routeTree.gen.ts` (git-ignored).
+```bash
+npm run dev:web       # only the Vite dev server (no API)
+npm run dev:server    # only the Hono API (uses tsx watch)
+npm run typecheck     # tsc -b for client + tsc -p tsconfig.server.json for server
+npm run lint          # eslint .
+npm run build         # production Vite bundle (dist/) — also runs typecheck
+npm run build:server  # compile Hono server to plain JS (server-build/)
+npm run build:all     # both of the above
+npm run preview       # vite preview the built bundle (no API)
+npm start             # run the compiled server (node server-build/index.js)
+```
 
-## PatchDocs feature parity
+### Environment variables
 
-Each row below maps to a PatchDocs marketing point and the corresponding
-implementation in this scaffold.
+All optional — sensible defaults work for local dev.
 
-| PatchDocs feature | Status | Where it lives |
-| ----------------- | ------ | -------------- |
-| Tenant management | ✅ | Top-left tenant switcher; pages filter via `useTenantScope()`; `src/lib/tenant-scope.ts`, `src/lib/mock/tenants.ts` |
-| User roles & rights | ✅ UI | Top-right user menu with role badge; `canWrite()` / `canAdmin()` in `src/lib/auth.ts` gate mutations |
-| History & change tracking | ✅ | All mutations call `emitChange()` (in `src/lib/api/meta.ts`); rack + dashboard + settings show timelines |
-| Meta information (photos / notes) | ✅ | Per-entity `Note` and `ImageAttachment` records; RHF + Zod dialogs; `src/features/racks/rack-notes-panel.tsx` |
-| Mapped down to every port | ✅ | `Port.cableId`, `Port.ipAddressId`; click port → trace full chain (`CableTraceDialog` in `src/features/patches/`) |
-| Advanced search & filtering | ✅ | ⌘K command palette powered by `cmdk`; `src/features/command-palette/command-palette.tsx` |
-| Visual rack views | ✅ | `src/features/racks/rack-view.tsx`; front / rear toggle, hover-highlights |
-| Floor plans (image + drag) | ✅ | Konva canvas with inline SVG bg; racks are draggable; `src/features/floorplan/floorplan-canvas.tsx` |
-| Custom device templates | ✅ | Library of 11 vendor templates; "New device from template" dialog with RHF + Zod; `/templates` page |
-| Export & reporting | ✅ | CSV + JSON downloads on Patches; helpers in `src/lib/export.ts` |
-| Browser-based & device-independent | ✅ | Standard Vite SPA |
-| 2FA & advanced security | ❌ | Backend-only (out of scope for this scaffold) |
-| Pay-as-you-go | ❌ | Backend-only |
+| Variable          | Default                  | Purpose                                                       |
+| ----------------- | ------------------------ | ------------------------------------------------------------- |
+| `PORT`            | `8787`                   | Port the Hono server listens on.                              |
+| `IPAM_DB`         | `data/ipam.db`           | SQLite file path. Created on first boot if it does not exist. |
+| `IPAM_UPLOAD_DIR` | `data/uploads`           | Directory for uploaded images. Created on first boot.         |
+
+---
+
+## Repository layout
+
+```
+.
+├── .github/
+│   └── workflows/
+│       ├── ci.yml        # lint + typecheck + build on PR and main
+│       └── release.yml   # tag → build → GitHub Release (+ optional Docker)
+├── data/                  # SQLite db + uploaded blobs (gitignored)
+├── dist/                  # vite build output (gitignored)
+├── server-build/          # tsc output of src/server (gitignored)
+├── src/
+│   ├── components/        # UI primitives (Radix wrappers) + layout
+│   │   ├── ui/            # button, dialog, dropdown, tabs, ...
+│   │   └── layout/        # app-shell, sidebar, topbar
+│   ├── features/          # feature-scoped UI (dashboard, ipam, racks, ...)
+│   ├── hooks/             # small reusable hooks
+│   ├── lib/
+│   │   ├── api/           # client-side wrappers around /api/*
+│   │   ├── mock/          # legacy in-memory fixtures (kept for tests)
+│   │   ├── auth.ts        # canWrite / canAdmin checks
+│   │   ├── queries.ts     # TanStack Query hooks
+│   │   ├── tenant-scope.ts
+│   │   └── types.ts       # domain types + branded ids
+│   ├── routes/            # file-based routes (auto-generated tree)
+│   ├── server/            # Hono backend
+│   │   ├── index.ts       # app, routes, middleware
+│   │   ├── db.ts          # better-sqlite3 + drizzle init
+│   │   ├── schema.ts      # drizzle schema (the contract)
+│   │   ├── seed.ts        # demo data
+│   │   └── meta.ts        # emitChange / audit helpers
+│   ├── store/             # Zustand stores (editor / tenant / ui)
+│   ├── styles/            # Tailwind v4 + theme tokens
+│   ├── main.tsx           # QueryClientProvider + RouterProvider
+│   └── routeTree.gen.ts   # generated by tsr — DO NOT EDIT
+├── eslint.config.js
+├── tsconfig.json          # composite: app + node
+├── tsconfig.app.json      # frontend
+├── tsconfig.node.json     # vite.config.ts
+├── tsconfig.server.json   # backend (compiles to server-build/)
+├── vite.config.ts
+└── package.json
+```
+
+---
 
 ## Tech stack
 
-| Concern             | Library                                                 |
-| ------------------- | ------------------------------------------------------- |
-| Build               | Vite 6 + `@tailwindcss/vite` plugin (Tailwind v4)      |
-| UI primitives       | Radix UI (`@radix-ui/react-*`) wrapped in `components/ui/` |
-| Routing             | TanStack Router file-based, auto-generated route tree   |
-| Data fetching       | TanStack Query v5                                       |
-| Forms / validation  | React Hook Form + Zod                                   |
-| Client state        | Zustand                                                 |
-| Canvas / diagrams   | react-konva                                             |
-| Command palette     | cmdk                                                    |
-| Icons               | lucide-react                                            |
-| Types               | TypeScript strict + `verbatimModuleSyntax`              |
+| Concern              | Library                                                          |
+| -------------------- | ---------------------------------------------------------------- |
+| UI framework         | React 19 + Vite 6 + TypeScript (strict, `verbatimModuleSyntax`)  |
+| Routing              | TanStack Router (file-based, `tsr generate`)                     |
+| Data fetching        | TanStack Query v5                                               |
+| Forms / validation   | React Hook Form + Zod                                           |
+| Client state         | Zustand                                                         |
+| UI primitives        | Radix UI (`@radix-ui/react-*`) — wrapped in `components/ui/`     |
+| Canvas / floorplans  | `konva` + `react-konva`                                         |
+| Command palette      | `cmdk` (⌘K / Ctrl+K)                                            |
+| Icons                | `lucide-react`                                                  |
+| Styling              | Tailwind v4 via `@tailwindcss/vite`                              |
+| **Backend**          | Hono on `@hono/node-server`                                     |
+| **Persistence**      | Drizzle ORM + `better-sqlite3`                                  |
+| **Validation (API)** | `@hono/zod-validator`                                           |
+| **Migrations**       | `drizzle-kit`                                                   |
 
-## Project layout
+---
 
-```
-src/
-  lib/
-    types.ts            // All domain types + branded ids
-    utils.ts            // cn(), small helpers
-    auth.ts             // role checks (canWrite / canAdmin), avatar initials
-    export.ts           // JSON/CSV download helpers
-    tenant-scope.ts     // Hook returning tenant-filtered entity lists
-    mock/
-      ids.ts            // brand-cast helpers
-      tenants.ts        // tenants + users
-      templates.ts      // device template library
-      locations.ts      // sites, rooms, floorplans
-      physical.ts       // racks, devices, ports, cables
-      ipam.ts           // VRFs, prefixes, addresses
-      meta.ts           // notes, images, change events
-      index.ts          // Re-exports the in-memory DB
-    api/
-      client.ts         // delay()
-      physical.ts       // racks/devices/ports + mutations
-      ipam.ts           // VRFs/prefixes/addresses
-      tenants.ts        // tenants / users / templates
-      meta.ts           // notes/images/change events + emitChange()
-      index.ts          // Re-exports
-    queries.ts          // TanStack Query hooks + mutations
-  store/
-    editor-store.ts     // UI selection state
-    tenant-store.ts     // current tenant + current user
-    ui-store.ts         // theme + sidebar
-  components/
-    ui/                 // Radix primitives + wrappers
-      button, input, label, dialog, dropdown, select, tabs,
-      tooltip, scroll-area, separator, badge, switch,
-      avatar, card, command (cmdk)
-    layout/
-      app-shell.tsx, sidebar.tsx, topbar.tsx
-  features/
-    dashboard/          // /          cards + activity
-    ipam/               // /ipam      subnet tree + addresses
-    racks/              // /racks     list + detail + view + panels + dialog
-    patches/            // /patches   cable inventory + trace dialog
-    floorplan/          // /floorplan Konva canvas with images + drag
-    templates/          // /templates device library
-    settings/           // /settings  tenant/users/activity
-    command-palette/    // global ⌘K search
-  routes/               // file-based routes (auto-generated tree)
-  styles/globals.css    // Tailwind v4 + theme tokens
-  main.tsx              // entry: QueryClientProvider + RouterProvider
+## Domain model (in `src/server/schema.ts`)
+
+All ids are TEXT (we use the same string ids as the frontend).
+
+- `tenants` → `users`, `sites` → `rooms` → `floorplans` → `rackPositions`
+- `racks` → `devices` (mounted at a U position, front/rear) → `ports`
+- `cables` connect two `ports`
+- `vrfs` → `prefixes` (hierarchical CIDR) → `ipAddresses`
+- `dhcpScopes`, `dnsZones`, `deviceTemplates` (per tenant)
+- `notes`, `imageAttachments` are polymorphic (`entityType` + `entityId`)
+- `changeEvents` records every mutation with actor, action, summary, ISO date
+
+When you change `schema.ts`, generate a migration:
+
+```bash
+npx drizzle-kit generate        # writes SQL into drizzle/
+npx drizzle-kit migrate         # applies pending migrations
 ```
 
-## Domain model
+Both the SQL file and the migration call must land in the same PR (see
+[CONTRIBUTING.md](./CONTRIBUTING.md#schema-changes)).
 
-### Core entities (tenant-aware)
-
-- `Tenant` → many `Site` → many `Room` → many `Floorplan` (with rack positions)
-- `Rack` → many `Device` (mount at U position; face front|rear) → many `Port`
-- `Cable` connects two `Port`s
-- `Vrf` scopes `Prefix`; `Prefix` is hierarchical (parent → child CIDR); `IpAddress` belongs to a prefix
-
-### Meta + audit
-
-- `Note` and `ImageAttachment` are polymorphic (`entityType` + `entityId`).
-  They can attach to any entity.
-- `ChangeEvent` records every mutation with actor, action, summary, ISO date.
-  Surfaced on each entity and on `/settings`.
-
-### People
-
-- `Tenant` → many `User` with role `admin` | `editor` | `viewer`.
-- `viewer` is read-only; `editor` can mutate; `admin` reserved for tenant-level ops.
+---
 
 ## How the app is wired
 
-1. **Routing**: `src/routes/*.tsx` exports TanStack Router `Route` via
-   `createFileRoute(...)`. The vite plugin generates `routeTree.gen.ts`.
-2. **App shell** (`src/components/layout/app-shell.tsx`): sidebar nav + topbar
-   + main outlet. Topbar has tenant switcher, user identity, search trigger.
-3. **Tenant scoping**: `useTenantScope()` (`src/lib/tenant-scope.ts`) returns
-   entity lists pre-filtered by the current tenant. Pages consume this hook
-   instead of raw `useX()` queries.
-4. **Data**:
-   - `src/lib/api/*` returns `Promise<T>` (with 80ms simulated latency) and
-     mutates in-memory arrays. Replace functions here to swap in a real
-     backend; nothing else needs to change.
-   - `src/lib/queries.ts` exposes query + mutation hooks.
-5. **State**:
-   - `tenant-store` holds current tenant + user (Zustand, in-memory).
-   - `editor-store` holds UI selection (which port is highlighted, etc.).
-   - Mutations call `emitChange()` so the audit log is always consistent.
-6. **Floorplan** uses react-konva. The `Floorplan.imageUrl` is rendered as a
-   Konva image; racks are draggable (snapping to a 20px grid) — only for
-   users with editor/admin role.
+1. **Routing** — `src/routes/*.tsx` exports TanStack Router `Route` via
+   `createFileRoute(...)`. The Vite plugin generates `src/routeTree.gen.ts`.
+2. **App shell** (`src/components/layout/app-shell.tsx`) — sidebar nav +
+   topbar + main outlet. Topbar has the tenant switcher, user identity,
+   search trigger.
+3. **API client** — `src/lib/api/*` exports typed wrappers around `/api/*`.
+   The functions return `Promise<T>`; TanStack Query hooks in
+   `src/lib/queries.ts` wrap them.
+4. **Server** (`src/server/index.ts`) — Hono app. All `/api/*` routes return
+   JSON. Writes are validated with Zod and emit a `ChangeEvent` via
+   `emitChange()` in `src/server/meta.ts`.
+5. **Floorplan** uses `react-konva`. `Floorplan.imageUrl` is rendered as a
+   Konva image; racks are draggable on a 20px grid (editor/admin only).
+6. **Audit log** — every mutation calls `emitChange()`. Surfaced on each
+   entity's timeline and on `/settings`.
 
-## Replacing mock data with a real backend
-
-The only files that know about the data source are:
-
-- `src/lib/mock/*` — fixture DB
-- `src/lib/api/*` — async read/write functions
-
-To plug in a real backend:
-
-1. Replace each export in `src/lib/api/{physical,ipam,tenants,meta}.ts` with
-   a `fetch` call (or Hono/tRPC/whatever).
-2. Keep the function signatures (input/output types) identical.
-3. For writes, emit a `ChangeEvent` on the server-side or call
-   `emitChange()` client-side to keep the audit log consistent.
-
-Nothing in `components/`, `features/`, or `routes/` needs to change.
-
-For a NetBox or Nautobot integration, model mappings live in the README
-under "Model mappings" of the previous scaffold revision.
-
-## Adding a new entity type
-
-1. Add the type + branded id in `src/lib/types.ts`.
-2. Add mock data in `src/lib/mock/<entity>.ts` and re-export from
-   `src/lib/mock/index.ts`.
-3. Add API functions in `src/lib/api/<entity>.ts` and re-export from
-   `src/lib/api/index.ts`.
-4. Add query keys + hooks + (optional) mutations in `src/lib/queries.ts`.
-5. If the entity is a top-level tenant resource, also add a `tenantId`
-   field and include it in `useTenantScope()`.
+---
 
 ## Keyboard shortcuts
 
@@ -194,19 +178,30 @@ under "Model mappings" of the previous scaffold revision.
 | ⌘K / Ctrl+K      | Open command palette  |
 | Esc (in palette)  | Close palette         |
 
-## Adding a new Radix primitive
+---
 
-1. `npm install @radix-ui/react-<thing>`
-2. Create `src/components/ui/<thing>.tsx` that re-exports the parts and
-   styles them with Tailwind. Existing files show the pattern.
+## Releasing
 
-## Outstanding for a production app
+We cut a release by pushing a tag of the form `vX.Y.Z`:
 
-- Backend + auth (this scaffold has no real persistence)
-- Multi-user real-time collaboration (live cursors, etc.)
-- Image upload (currently URL- or data: URL-based)
-- Floorplan background image upload
-- Bulk import (CSV/Excel)
-- Diffing/audit log viewer with structural diffs
-- PDU power aggregation
-- SLA / circuit IDs / cross-connects
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+`.github/workflows/release.yml` then builds the Vite bundle + Hono server
+and attaches the artifact to a GitHub Release. If the repo is configured
+with registry secrets (`IPAM_DOCKER_USERNAME` + `IPAM_DOCKER_PASSWORD`) or
+`IPAM_PUSH_DOCKER=true`, a Docker image is also pushed. See
+[CONTRIBUTING.md](./CONTRIBUTING.md#release-secrets) for the full list.
+
+---
+
+## Outstanding work
+
+- Tests: there are no test files yet. The CI workflow is wired for vitest
+  and will activate the suite as soon as one is added under `src/`.
+- Real authentication (the current `canWrite` / `canAdmin` checks are
+  client-side placeholders).
+- DNS / DHCP live integrations (issue NUL-13).
+- Bulk import (CSV/Excel) and structural diffs in the audit log viewer.

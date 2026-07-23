@@ -1,12 +1,14 @@
 import { useEffect, type ReactNode } from 'react'
 import { useNavigate, useLocation } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 
 import { useCurrentUser } from './use-current-user'
 import {
   decideRedirect,
-  safePostLoginTarget,
+  makeSessionExpiredHandler,
   type RedirectInputs,
 } from './route-guard-logic'
+import { SESSION_EXPIRED_EVENT } from '@/lib/api/http-client'
 import { Skeleton } from '@/components/ui/skeleton'
 
 /**
@@ -34,6 +36,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   const me = useCurrentUser()
   const navigate = useNavigate()
   const location = useLocation()
+  const queryClient = useQueryClient()
 
   const currentPath = location.pathname
   const currentSearch = location.searchStr ?? ''
@@ -69,6 +72,37 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     navigate,
   ])
 
+  // NUL-50.4 — listen for the `ipam:session-expired` event dispatched by
+  // `apiFetch` on any non-login `/api/**` 401. The user is sitting on a
+  // protected page (probably with stale data); we need to:
+  //
+  //   1. Drop the cached `['me']` so the next read refetches (and the
+  //      `decideRedirect` effect above sees `isAuthenticated: false`).
+  //   2. Bounce to `/login?from=<current>` so the destination is
+  //      preserved across the round-trip.
+  //
+  // The listener logic (sanitisation, /login short-circuit, cache wipe,
+  // navigation) lives in `makeSessionExpiredHandler` in
+  // `route-guard-logic.ts` so it can be exercised under node --test
+  // without rendering React. The effect here is just the event wiring.
+  //
+  // The listener is `replace: true` so the stale page doesn't pollute
+  // history. We deliberately don't `e.preventDefault()` — there is no
+  // default browser behaviour for a `CustomEvent`.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handler = makeSessionExpiredHandler({
+      currentPath,
+      currentSearch,
+      queryClient,
+      navigate: (opts) => navigate(opts),
+    })
+    window.addEventListener(SESSION_EXPIRED_EVENT, handler)
+    return () => {
+      window.removeEventListener(SESSION_EXPIRED_EVENT, handler)
+    }
+  }, [currentPath, currentSearch, navigate, queryClient])
+
   if (me.isLoading) {
     return <AuthSplash />
   }
@@ -98,5 +132,3 @@ function AuthSplash() {
     </div>
   )
 }
-
-export { safePostLoginTarget }

@@ -16,7 +16,7 @@ services:
       dockerfile: Dockerfile
     image: ipam:local
     ports:
-      - "8787:8787"
+      - "${IPAM_HOST_PORT:-8787}:8787"
     environment:
       NODE_ENV: production
       PORT: 8787

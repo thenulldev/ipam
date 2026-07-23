@@ -103,7 +103,8 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    name: SSH deploy to ${{ secrets.IPAM_DEPLOY_HOST || 'this host' }}
+    # Plain name — `secrets` is not allowed in job.name (only in if:/steps).
+    name: SSH deploy
     needs: build
     # The deploy step is safe to re-run on workflow_dispatch WITHOUT rebuild.
     # `always()` so we still run on a skipped build (deploy_only=true path);

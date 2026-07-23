@@ -58,13 +58,13 @@ export function FloorplanPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-900">
-        <MapPinned className="size-4 text-slate-400" />
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900 sm:gap-3 sm:px-4">
+        <MapPinned className="size-4 shrink-0 text-slate-400" />
         <Select
           value={floorplanId ?? undefined}
           onValueChange={(v) => setFloorplanId(v as FloorplanId)}
         >
-          <SelectTrigger className="h-8 w-64 text-sm">
+          <SelectTrigger className="h-9 min-w-0 flex-1 text-sm sm:h-8 sm:w-64 sm:flex-none">
             <SelectValue placeholder="Choose a floorplan" />
           </SelectTrigger>
           <SelectContent>
@@ -91,11 +91,11 @@ export function FloorplanPage() {
             {currentSite.name} / {currentRoom?.name}
           </Badge>
         )}
-        <span className="ml-auto text-[11px] text-slate-500">
+        <span className="order-last w-full text-[11px] text-slate-500 sm:order-none sm:ml-auto sm:w-auto">
           Drag to pan · scroll to zoom · click a rack to open
         </span>
         {writable && (
-          <Button size="sm" variant="outline">
+          <Button size="sm" variant="outline" className="w-full sm:w-auto">
             <Plus className="size-4" />
             New floorplan
           </Button>

@@ -1,9 +1,11 @@
 import type { TenantId, Vlan } from '../types'
-import * as db from '../mock'
-import { delay } from './client'
+import { pick } from './adapter'
+import { api } from './http-client'
+import * as mock from './_mock/vlans'
 
-export async function listVlans(opts?: { tenantId?: TenantId }): Promise<Vlan[]> {
-  let all = db.vlans
-  if (opts?.tenantId) all = all.filter((v) => v.tenantId === opts.tenantId)
-  return delay(all)
-}
+const liveListVlans = (opts?: { tenantId?: TenantId }): Promise<Vlan[]> =>
+  api.get<Vlan[]>('/api/vlans').then((vlans) =>
+    opts?.tenantId ? vlans.filter((vlan) => vlan.tenantId === opts.tenantId) : vlans,
+  )
+
+export const listVlans = pick<typeof mock.listVlans>(liveListVlans, mock.listVlans)

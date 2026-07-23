@@ -1,0 +1,209 @@
+[
+  {
+    "route": "dashboard",
+    "viewport": 375,
+    "mainScrollHeight": 751,
+    "mainClientHeight": 751,
+    "mainScrollTop": 0,
+    "mainOverflowsY": false,
+    "scrollables": [
+      {
+        "tag": "MAIN",
+        "scrollH": 751,
+        "clientH": 751,
+        "scrollW": 375,
+        "clientW": 375,
+        "overflowX": "auto",
+        "overflowY": "auto",
+        "rectW": 375,
+        "rectH": 751,
+        "canScrollY": false,
+        "canScrollX": false
+      }
+    ],
+    "scroll_state": {
+      "before": 0,
+      "after": 0,
+      "changed": false
+    }
+  },
+  {
+    "route": "floorplan",
+    "viewport": 375,
+    "mainScrollHeight": 751,
+    "mainClientHeight": 751,
+    "mainScrollTop": 0,
+    "mainOverflowsY": false,
+    "scrollables": [
+      {
+        "tag": "MAIN",
+        "scrollH": 751,
+        "clientH": 751,
+        "scrollW": 375,
+        "clientW": 375,
+        "overflowX": "auto",
+        "overflowY": "auto",
+        "rectW": 375,
+        "rectH": 751,
+        "canScrollY": false,
+        "canScrollX": false
+      },
+      {
+        "tag": "DIV",
+        "scrollH": 751,
+        "clientH": 751,
+        "scrollW": 375,
+        "clientW": 375,
+        "overflowX": "auto",
+        "overflowY": "auto",
+        "rectW": 375,
+        "rectH": 751,
+        "canScrollY": false,
+        "canScrollX": false
+      }
+    ],
+    "scroll_state": {
+      "before": 0,
+      "after": 0,
+      "changed": false
+    }
+  },
+  {
+    "route": "topology",
+    "viewport": 375,
+    "mainScrollHeight": 751,
+    "mainClientHeight": 751,
+    "mainScrollTop": 0,
+    "mainOverflowsY": false,
+    "scrollables": [
+      {
+        "tag": "MAIN",
+        "scrollH": 751,
+        "clientH": 751,
+        "scrollW": 375,
+        "clientW": 375,
+        "overflowX": "auto",
+        "overflowY": "auto",
+        "rectW": 375,
+        "rectH": 751,
+        "canScrollY": false,
+        "canScrollX": false
+      }
+    ],
+    "scroll_state": {
+      "before": 0,
+      "after": 0,
+      "changed": false
+    }
+  },
+  {
+    "route": "settings",
+    "viewport": 375,
+    "mainScrollHeight": 751,
+    "mainClientHeight": 751,
+    "mainScrollTop": 0,
+    "mainOverflowsY": false,
+    "scrollables": [
+      {
+        "tag": "MAIN",
+        "scrollH": 751,
+        "clientH": 751,
+        "scrollW": 375,
+        "clientW": 375,
+        "overflowX": "auto",
+        "overflowY": "auto",
+        "rectW": 375,
+        "rectH": 751,
+        "canScrollY": false,
+        "canScrollX": false
+      },
+      {
+        "tag": "DIV",
+        "scrollH": 36,
+        "clientH": 36,
+        "scrollW": 270,
+        "clientW": 270,
+        "overflowX": "auto",
+        "overflowY": "auto",
+        "rectW": 270,
+        "rectH": 36,
+        "canScrollY": false,
+        "canScrollX": false
+      }
+    ],
+    "scroll_state": {
+      "before": 0,
+      "after": 0,
+      "changed": false
+    }
+  },
+  {
+    "route": "templates",
+    "viewport": 375,
+    "mainScrollHeight": 751,
+    "mainClientHeight": 751,
+    "mainScrollTop": 0,
+    "mainOverflowsY": false,
+    "scrollables": [
+      {
+        "tag": "MAIN",
+        "scrollH": 751,
+        "clientH": 751,
+        "scrollW": 375,
+        "clientW": 375,
+        "overflowX": "auto",
+        "overflowY": "auto",
+        "rectW": 375,
+        "rectH": 751,
+        "canScrollY": false,
+        "canScrollX": false
+      }
+    ],
+    "scroll_state": {
+      "before": 0,
+      "after": 0,
+      "changed": false
+    }
+  },
+  {
+    "route": "patches",
+    "viewport": 375,
+    "mainScrollHeight": 751,
+    "mainClientHeight": 751,
+    "mainScrollTop": 0,
+    "mainOverflowsY": false,
+    "scrollables": [
+      {
+        "tag": "MAIN",
+        "scrollH": 751,
+        "clientH": 751,
+        "scrollW": 375,
+        "clientW": 375,
+        "overflowX": "auto",
+        "overflowY": "auto",
+        "rectW": 375,
+        "rectH": 751,
+        "canScrollY": false,
+        "canScrollX": false
+      },
+      {
+        "tag": "DIV",
+        "scrollH": 100,
+        "clientH": 100,
+        "scrollW": 720,
+        "clientW": 341,
+        "overflowX": "auto",
+        "overflowY": "auto",
+        "rectW": 341,
+        "rectH": 100,
+        "canScrollY": false,
+        "canScrollX": true
+      }
+    ],
+    "scroll_state": {
+      "before": 0,
+      "after": 0,
+      "changed": false
+    }
+  }
+]

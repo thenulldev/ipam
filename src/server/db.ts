@@ -1,23 +1,57 @@
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
-import { sql } from 'drizzle-orm'
+import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import * as schema from './schema'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { mkdirSync } from 'node:fs'
+
+// better-sqlite3 is synchronous; the wrapper below exposes drizzle's typed
+// transaction API on top of `BEGIN IMMEDIATE` so concurrent writers
+// serialize instead of stepping on each other's read-then-write sequences.
+export type Tx = BetterSQLite3Database<typeof schema>
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-const DB_PATH = process.env.IPAM_DB ?? join(__dirname, '..', '..', 'data', 'ipam.db')
-
-import { mkdirSync } from 'node:fs'
-mkdirSync(dirname(DB_PATH), { recursive: true })
+// IPAM_DATA_DIR (set by docker-compose) takes precedence over IPAM_DB so a
+// container can point at /data once and inherit the rest. On bare dev we
+// still default to ./data/ipam.db.
+const DATA_DIR = process.env.IPAM_DATA_DIR
+  ? process.env.IPAM_DATA_DIR
+  : dirname(process.env.IPAM_DB ?? join(__dirname, '..', '..', 'data', 'ipam.db'))
+const DB_PATH = process.env.IPAM_DATA_DIR
+  ? join(process.env.IPAM_DATA_DIR, 'ipam.db')
+  : (process.env.IPAM_DB ?? join(__dirname, '..', '..', 'data', 'ipam.db'))
+mkdirSync(DATA_DIR, { recursive: true })
 
 export const sqlite = new Database(DB_PATH)
 sqlite.pragma('journal_mode = WAL')
 sqlite.pragma('foreign_keys = ON')
+// 5 s busy timeout so concurrent writers serialize cleanly instead of
+// throwing SQLITE_BUSY on read-then-write sequences covered by `tx()`.
+sqlite.pragma('busy_timeout = 5000')
 
 export const db = drizzle(sqlite, { schema })
+
+/**
+ * Run `fn` inside a `BEGIN IMMEDIATE` transaction so concurrent writers
+ * serialize at BEGIN instead of racing on the first read. better-sqlite3
+ * is synchronous so the callback can be `sync`; we call the underlying
+ * `.immediate()` mode on better-sqlite3's transaction wrapper, which
+ * matches what the route handlers in `server/index.ts` rely on (POST
+ * /cables, DELETE /devices, etc. all assume read-then-write atomicity).
+ *
+ * Throwing inside `fn` rolls back; returning the value commits.
+ */
+export function tx<T>(fn: (tx: Tx) => T): T {
+  // Drizzle's better-sqlite3 driver defaults to `behavior: 'deferred'`,
+  // which lets two transactions both BEGIN, both read, and then compete
+  // for the writer lock — the exact read-then-write window that exposes
+  // the POST /cables race. Forcing IMMEDIATE acquires the RESERVED lock
+  // at BEGIN, so only one writer enters the critical section at a time.
+  return db.transaction(fn, { behavior: 'immediate' }) as T
+}
 
 // Run create-table migrations idempotently on startup.
 // Drizzle Kit migrations would be the proper way; for the scaffold this
@@ -40,7 +74,9 @@ function ensureTables() {
       name TEXT NOT NULL,
       email TEXT NOT NULL,
       role TEXT NOT NULL,
-      avatar_color TEXT
+      avatar_color TEXT,
+      password_hash TEXT,
+      onboarding_completed_at TEXT
     )`,
     `CREATE TABLE IF NOT EXISTS sites (
       id TEXT PRIMARY KEY,
@@ -139,6 +175,14 @@ function ensureTables() {
       rd TEXT,
       description TEXT
     )`,
+    `CREATE TABLE IF NOT EXISTS vlans (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      vrf_id TEXT REFERENCES vrfs(id),
+      vid INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT
+    )`,
     `CREATE TABLE IF NOT EXISTS prefixes (
       id TEXT PRIMARY KEY,
       tenant_id TEXT NOT NULL REFERENCES tenants(id),
@@ -235,21 +279,21 @@ function ensureTables() {
   ]
   // Additive ALTERs for legacy DBs that pre-date the before/after columns.
   // Each ALTER is wrapped to swallow the "duplicate column name" error.
+  // IMPORTANT: these must run AFTER `statements` below — ALTER fails on a
+  // missing table, and a clean-box install hits that path.
   const legacyAlters = [
     `ALTER TABLE change_events ADD COLUMN before_state TEXT`,
     `ALTER TABLE change_events ADD COLUMN after_state TEXT`,
     `ALTER TABLE change_events ADD COLUMN context TEXT`,
     `ALTER TABLE change_events ADD COLUMN outcome TEXT NOT NULL DEFAULT 'ok'`,
+    // NUL-18: password column added in this PR. New tables get it via the
+    // CREATE above; legacy DBs need this ALTER.
+    `ALTER TABLE users ADD COLUMN password_hash TEXT`,
+    // NUL-59: server-side onboarding completion timestamp (NUL-51.E follow-up).
+    // Nullable so existing rows get NULL = "tour not completed yet".
+    `ALTER TABLE users ADD COLUMN onboarding_completed_at TEXT`,
   ]
-  for (const stmt of legacyAlters) {
-    try {
-      sqlite.exec(stmt)
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      if (!/duplicate column name/i.test(msg)) throw err
-    }
-  }
-  // Indexes that power the /api/audit-log query surface.
+  // Indexes that power the /api/audit-log query surface (NUL-12).
   const indexStatements = [
     `CREATE INDEX IF NOT EXISTS idx_change_events_tenant_time
        ON change_events(tenant_id, created_at DESC)`,
@@ -261,6 +305,17 @@ function ensureTables() {
        ON change_events(tenant_id, outcome, created_at DESC)`,
   ]
   for (const stmt of statements) {
+    sqlite.exec(stmt)
+  }
+  for (const stmt of legacyAlters) {
+    try {
+      sqlite.exec(stmt)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (!/duplicate column name/i.test(msg)) throw err
+    }
+  }
+  for (const stmt of indexStatements) {
     sqlite.exec(stmt)
   }
 }
@@ -279,5 +334,3 @@ export function countsByTenant() {
     .all('tenant-internal', 'tenant-internal', 'tenant-internal')
   return rows
 }
-
-void sql

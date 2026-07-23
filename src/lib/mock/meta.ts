@@ -8,7 +8,7 @@ export const notes: Note[] = [
   {
     id: id.note('note-0001'),
     tenantId: id.tenant('tenant-internal'),
-    authorId: id.user('user-internal-admin'),
+    authorId: id.user('user-stephan'),
     authorName: 'Stephan Frank',
     body: 'core-sw-01 main power supply replaced last month — verify firmware is on the expected version.',
     createdAt: new Date(now - 3 * day).toISOString(),
@@ -68,7 +68,7 @@ export const changeEvents: ChangeEvent[] = [
   {
     id: id.change('evt-0001'),
     tenantId: id.tenant('tenant-internal'),
-    actorId: id.user('user-internal-admin'),
+    actorId: id.user('user-stephan'),
     actorName: 'Stephan Frank',
     action: 'connect',
     entityType: 'cable',
@@ -101,7 +101,7 @@ export const changeEvents: ChangeEvent[] = [
   {
     id: id.change('evt-0004'),
     tenantId: id.tenant('tenant-internal'),
-    actorId: id.user('user-internal-admin'),
+    actorId: id.user('user-stephan'),
     actorName: 'Stephan Frank',
     action: 'place',
     entityType: 'rack',

@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react'
 import { confirm } from '@/components/ui/confirm-dialog'
 import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from '@/components/ui/dialog'
+
+import {
   Building2,
   Calendar,
   FileText,
@@ -9,6 +15,7 @@ import {
   Plug,
   PlugZap,
   Save,
+  SlidersHorizontal,
   Tag,
   Trash2,
   Unplug,
@@ -47,11 +54,18 @@ import type { DeviceId, FrontBack, Vlan } from '@/lib/types'
 interface Props {
   deviceId: DeviceId | null
   onClose: () => void
+  /**
+   * `desktop` (default) renders the side `<aside>` panel.
+   * `mobile` renders the same content as a full-width bottom-sheet Dialog so
+   * touch users can reach every setting with one thumb, scrim/Escape/focus
+   * are preserved by Radix Dialog, and the desktop layout is unchanged.
+   */
+  variant?: 'desktop' | 'mobile'
 }
 
 type Tab = 'general' | 'photos' | 'notes' | 'rules'
 
-export function DeviceSettingsPanel({ deviceId, onClose }: Props) {
+export function DeviceSettingsPanel({ deviceId, onClose, variant = 'desktop' }: Props) {
   const tenantId = useTenantStore((s) => s.currentTenantId)
   const currentUserId = useTenantStore((s) => s.currentUserId)
   const tenantUsers = useUsers(tenantId).data ?? []
@@ -101,6 +115,10 @@ export function DeviceSettingsPanel({ deviceId, onClose }: Props) {
       responsible: device.customFields['responsible'] ?? '',
       tags: device.tags,
     })
+  // Re-sync the draft only when the device identity changes — not on every
+  // prop update, since the draft is local editable state. ESLint can't
+  // express "only on id" so the disable is intentional.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [device?.id])
 
   const isDirty = device
@@ -160,17 +178,21 @@ export function DeviceSettingsPanel({ deviceId, onClose }: Props) {
     }, { onSuccess: onClose })
   }
 
-  return (
-    <aside className="flex w-80 shrink-0 flex-col border-l border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2 dark:border-slate-800">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Settings
+  const body = (
+    <>
+      <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-3 py-2 dark:border-slate-800">
+        <div className="flex min-w-0 items-center gap-2">
+          {variant === 'mobile' && (
+            <SlidersHorizontal className="size-3.5 shrink-0 text-slate-400" />
+          )}
+          <span className="truncate text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Settings{device ? ` · ${device.name}` : ''}
           </span>
         </div>
         <button
           onClick={onClose}
-          className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+          aria-label="Close settings"
+          className="grid size-9 shrink-0 place-items-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
         >
           <X className="size-4" />
         </button>
@@ -201,7 +223,7 @@ export function DeviceSettingsPanel({ deviceId, onClose }: Props) {
         })}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">
         {tab === 'general' && (
           <div className="space-y-3">
             {device.kind === 'patchbox-cassette' && (
@@ -387,6 +409,41 @@ export function DeviceSettingsPanel({ deviceId, onClose }: Props) {
           </div>
         )}
       </div>
+    </>
+  )
+
+  if (variant === 'mobile') {
+    return (
+      <Dialog
+        // Drive open state from the parent via deviceId so closing elsewhere
+        // (Escape, scrim tap) still tears the sheet down correctly.
+        open={deviceId !== null}
+        onOpenChange={(o) => {
+          if (!o) onClose()
+        }}
+      >
+        <DialogContent
+          showCloseButton={false}
+          className={cn(
+            // Mobile: full-width bottom sheet, leave room for safe-area
+            // gestures, scroll inside so long forms don't clip the Save button.
+            'inset-x-0 bottom-0 left-0 right-0 top-auto max-h-[92dvh] w-full max-w-none translate-x-0 translate-y-0 rounded-b-none rounded-t-xl p-0',
+          )}
+        >
+          {/* Sheet header for grab affordance + accessibility. */}
+          <div className="mx-auto mt-2 h-1.5 w-12 shrink-0 rounded-full bg-slate-300 dark:bg-slate-600" />
+          <DialogTitle className="sr-only">Device settings</DialogTitle>
+          <div className="flex min-h-0 max-h-[calc(92dvh-0.75rem)] flex-col">
+            {body}
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  return (
+    <aside className="flex w-80 shrink-0 flex-col border-l border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+      {body}
     </aside>
   )
 }

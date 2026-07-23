@@ -1,9 +1,18 @@
 import { Link } from '@tanstack/react-router'
-import { Cable, ClipboardList, GitBranch, LayoutDashboard, MapPinned, Network, Server, Wrench } from 'lucide-react'
-import { useLocation } from 'react-router-dom'
+import {
+  Cable,
+  ClipboardList,
+  GitBranch,
+  LayoutDashboard,
+  MapPinned,
+  Network,
+  Server,
+  Wrench,
+} from 'lucide-react'
+
 import { cn } from '@/lib/utils'
 
-const navItems = [
+export const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/ipam', label: 'IPAM', icon: Network },
   { to: '/racks', label: 'Racks', icon: Server },
@@ -13,6 +22,28 @@ const navItems = [
   { to: '/templates', label: 'Templates', icon: ClipboardList },
   { to: '/settings', label: 'Settings', icon: Wrench },
 ] as const
+
+/**
+ * Map of sidebar link → product-tour selector. Mirrors
+ * `src/components/onboarding/tour-data.ts`. We attach the same
+ * `data-tour` attribute whether the user lands via the desktop Sidebar or
+ * the mobile `MobileNavDrawer` so the tour provider only needs one
+ * selector. Setting a step in tour-data.ts with a selector not listed
+ * below is a no-op (the anchor never resolves and the popover hides).
+ */
+export const TOUR_SELECTORS: Record<
+  (typeof navItems)[number]['to'],
+  string | null
+> = {
+  '/': 'dashboard',
+  '/ipam': 'ipam',
+  '/racks': 'racks',
+  '/patches': 'patches',
+  '/floorplan': 'floorplan',
+  '/topology': 'topology',
+  '/templates': 'help',
+  '/settings': null,
+}
 
 export function Sidebar() {
   return (
@@ -45,9 +76,11 @@ function SidebarLink({
   label,
   icon: Icon,
 }: (typeof navItems)[number]) {
+  const tourSelector = TOUR_SELECTORS[to]
   return (
     <Link
       to={to}
+      data-tour={tourSelector ?? undefined}
       className={cn(
         'group flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100',
         '[&.active]:bg-brand-50 [&.active]:text-brand-700 dark:[&.active]:bg-brand-900/30 dark:[&.active]:text-brand-300',

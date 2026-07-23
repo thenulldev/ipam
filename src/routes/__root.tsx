@@ -1,5 +1,7 @@
 import { Outlet, createRootRouteWithContext } from '@tanstack/react-router'
 import { AppShell } from '@/components/layout/app-shell'
+import { AuthGuard } from '@/features/auth/route-guard'
+import { useMeSync } from '@/store/tenant-store'
 import type { QueryClient } from '@tanstack/react-query'
 
 interface RouterContext {
@@ -11,9 +13,13 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 })
 
 function RootComponent() {
+  useMeSync()
+
   return (
-    <AppShell>
-      <Outlet />
-    </AppShell>
+    <AuthGuard>
+      <AppShell>
+        <Outlet />
+      </AppShell>
+    </AuthGuard>
   )
 }

@@ -758,8 +758,7 @@ function findPort(deviceSlug: string, label: string): PortId | null {
     (p) => p.deviceId === id.device(deviceSlug) && p.label === label,
   )
   if (!port) {
-    if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
+    if ((import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV) {
       console.warn(`[mock] missing port ${deviceSlug}:${label} — skipping`)
     }
     return null

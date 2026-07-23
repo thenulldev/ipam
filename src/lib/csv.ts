@@ -8,7 +8,7 @@ export interface ParsedCsv {
 
 export function parseCsv(input: string): ParsedCsv {
   const errors: { line: number; message: string }[] = []
-  const records: string[][] = []
+  const records: { cells: string[]; line: number }[] = []
   let field = ''
   let row: string[] = []
   let inQuotes = false
@@ -47,8 +47,8 @@ export function parseCsv(input: string): ParsedCsv {
       // Handle \r\n: skip the \n if previous was \r
       row.push(field)
       field = ''
-      if (row.length > 0 && !(row.length === 1 && row[0] === '')) {
-        records.push(row)
+      if (!(row.length === 1 && row[0] === '')) {
+        records.push({ cells: row, line })
       }
       row = []
       if (c === '\n') line += 1
@@ -61,22 +61,22 @@ export function parseCsv(input: string): ParsedCsv {
   if (field !== '' || row.length > 0) {
     row.push(field)
     if (!(row.length === 1 && row[0] === '')) {
-      records.push(row)
+      records.push({ cells: row, line })
     }
   }
 
   if (records.length === 0) {
     return { headers: [], rows: [], errors }
   }
-  const headers = records[0]!.map((h) => h.trim())
+  const headers = records[0]!.cells.map((h) => h.trim())
   const rows = records.slice(1).map((r) => {
-    if (r.length !== headers.length) {
+    if (r.cells.length !== headers.length) {
       errors.push({
-        line: records.indexOf(r) + 2,
-        message: `Expected ${headers.length} fields, got ${r.length}`,
+        line: r.line,
+        message: `Expected ${headers.length} fields, got ${r.cells.length}`,
       })
     }
-    return r
+    return r.cells
   })
   return { headers, rows, errors }
 }

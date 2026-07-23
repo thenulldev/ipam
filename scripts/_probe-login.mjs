@@ -1,0 +1,17 @@
+
+import { chromium } from '@playwright/test'
+const browser = await chromium.launch({ headless: true })
+const ctx = await browser.newContext()
+const page = await ctx.newPage()
+await page.goto('http://127.0.0.1:5173/login', { waitUntil: 'networkidle' })
+const url = page.url()
+const title = await page.title()
+const html = await page.content()
+const visibleButtons = await page.locator('button:visible').allTextContents()
+const visibleInputs = await page.locator('input:visible').count()
+console.log('URL:', url)
+console.log('TITLE:', title)
+console.log('VISIBLE_INPUTS:', visibleInputs)
+console.log('VISIBLE_BUTTONS:', visibleButtons)
+console.log('HTML_SAMPLE:', html.substring(0, 4000))
+await browser.close()

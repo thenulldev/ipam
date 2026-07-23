@@ -90,19 +90,24 @@ export function PatchboxConfigurator({ device, open, onOpenChange }: Props) {
 
   const onSave = async () => {
     if (!activeSlot) return
+    const parsed = schema.safeParse(draft)
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? 'Invalid cassette')
+      return
+    }
     setSaving(true)
     try {
       const cassette =
-        draft.type === 'empty'
+        parsed.data.type === 'empty'
           ? undefined
           : {
               slot: activeSlot.position,
-              type: draft.type,
-              cableType: draft.cableType || undefined,
-              cableLengthM: draft.cableLengthM,
-              cableColorHex: draft.cableColorHex || undefined,
-              connectorTop: draft.connectorTop || undefined,
-              connectorBottom: draft.connectorBottom || undefined,
+              type: parsed.data.type,
+              cableType: parsed.data.cableType,
+              cableLengthM: parsed.data.cableLengthM,
+              cableColorHex: parsed.data.cableColorHex,
+              connectorTop: parsed.data.connectorTop,
+              connectorBottom: parsed.data.connectorBottom,
             }
       updatePortMut.mutate(
         {

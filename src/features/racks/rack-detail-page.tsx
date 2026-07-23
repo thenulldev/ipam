@@ -14,6 +14,7 @@ import { useEditorStore } from '@/store/editor-store'
 import { useTenantStore } from '@/store/tenant-store'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { RackView } from './rack-view'
 import { EntityNotesPanel } from '@/features/entity-notes-panel'
 import { EntityHistoryPanel } from '@/features/entity-history-panel'
@@ -32,10 +33,11 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs'
 import { useParams } from '@tanstack/react-router'
-import { ArrowLeft, Cable, Check, FileText, FolderTree, History, Info, Layers, Pencil, Plug, PlugZap, Plus, Server, X } from 'lucide-react'
+import { ArrowLeft, Cable, Check, FileText, FolderTree, History, Info, Layers, Pencil, Plug, PlugZap, Plus, Server, SlidersHorizontal, X } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import type { DeviceId, DeviceKind, PortId, RackId } from '@/lib/types'
 import { canWrite } from '@/lib/auth'
+import { useIsMobile } from '@/hooks/use-media-query'
 
 const kindColor: Record<DeviceKind, string> = {
   switch: 'bg-sky-500/15 border-sky-500/40 text-sky-700 dark:text-sky-300',
@@ -71,16 +73,19 @@ export function RackDetailPage() {
   const writable = canWrite(currentUser?.role ?? 'viewer')
 
   const [view, setView] = useState<'front' | 'rear'>('front')
-  const [tab, setTab] = useState<TabKey>('overview')
-  const [connectionsSubTab, setConnectionsSubTab] = useState<
-    'devices' | 'cables' | 'vlans'
-  >('devices')
-  const [createOpen, setCreateOpen] = useState(false)
-  const [editTargetId, setEditTargetId] = useState<DeviceId | null>(null)
-  const [notesTargetId, setNotesTargetId] = useState<DeviceId | null>(null)
-  const [confirmPortB, setConfirmPortB] = useState<PortId | null>(null)
-  const [zoom, setZoom] = useState(1)
-  const [fullscreen, setFullscreen] = useState(false)
+    const [tab, setTab] = useState<TabKey>('overview')
+    const [connectionsSubTab, setConnectionsSubTab] = useState<
+      'devices' | 'cables' | 'vlans'
+    >('devices')
+    const [createOpen, setCreateOpen] = useState(false)
+    const [editTargetId, setEditTargetId] = useState<DeviceId | null>(null)
+    const [notesTargetId, setNotesTargetId] = useState<DeviceId | null>(null)
+    const [confirmPortB, setConfirmPortB] = useState<PortId | null>(null)
+    const [zoom, setZoom] = useState(1)
+    const [fullscreen, setFullscreen] = useState(false)
+    const [libraryOpen, setLibraryOpen] = useState(false)
+    const [settingsOpen, setSettingsOpen] = useState(false)
+    const isMobile = useIsMobile()
 
   // Connect mode state lives in the editor store.
   const connectMode = useEditorStore((s) => s.connectMode)
@@ -162,142 +167,80 @@ export function RackDetailPage() {
   }
 
   const usedU = devices.reduce((s, d) => s + d.uHeight, 0)
-  const selectedDevice =
-    allDevices.find((d) => d.id === selectedDeviceId) ?? null
-  const selectedDevicePorts = selectedDevice
-    ? allPorts.filter((p) => p.deviceId === selectedDevice.id)
-    : []
+    const selectedDevice =
+      allDevices.find((d) => d.id === selectedDeviceId) ?? null
+    const selectedDevicePorts = selectedDevice
+      ? allPorts.filter((p) => p.deviceId === selectedDevice.id)
+      : []
 
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/racks">
-              <ArrowLeft className="size-4" />
-              Racks
-            </Link>
-          </Button>
-          <span>/</span>
-          <span className="font-medium text-slate-900 dark:text-slate-100">
-            {rack.name}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline">
-            {usedU} / {rack.uHeight}U used
-          </Badge>
-          {(() => {
-            const watts = devices.reduce((s, d) => s + (d.wattage ?? 0), 0)
-            const budget = rack.powerBudgetWatts ?? rack.uHeight * 100
-            const pct = budget > 0 ? Math.min(100, Math.round((watts / budget) * 100)) : 0
-            const danger = pct >= 90
-            const warn = pct >= 70
-            return (
-              <div
-                className={`flex items-center gap-2 rounded-md border px-2 py-0.5 text-xs ${
-                  danger
-                    ? 'border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-700/50 dark:bg-rose-950/40 dark:text-rose-200'
-                    : warn
-                      ? 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-700/50 dark:bg-amber-950/40 dark:text-amber-200'
-                      : 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700/50 dark:bg-emerald-950/40 dark:text-emerald-200'
-                }`}
-                title={`Power budget: ${watts}W used of ${budget}W`}
-              >
-                <span className="font-mono">{watts}W</span>
-                <div className="h-1.5 w-16 overflow-hidden rounded-full bg-white/40">
-                  <div
-                    className="h-full bg-current"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <span className="font-mono">{pct}%</span>
-              </div>
-            )
-          })()}
-          <div className="flex items-center gap-1 rounded-md border border-slate-300 bg-white p-0.5 text-xs dark:border-slate-700 dark:bg-slate-900">
-            {(['front', 'rear'] as const).map((side) => (
-              <button
-                key={side}
-                onClick={() => setView(side)}
-                className={`rounded px-2 py-0.5 ${
-                  view === side
-                    ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200'
-                    : 'text-slate-600 dark:text-slate-300'
-                }`}
-              >
-                {side === 'front' ? 'Front' : 'Rear'}
-              </button>
-            ))}
+    // Shared body for the library/devices panel. Used both as the desktop
+    // side aside and inside the mobile Dialog drawer so behaviour stays in sync.
+    const renderLibraryPanel = (onItemPicked?: () => void) => (
+      <Tabs defaultValue="library" className="flex h-full flex-col">
+        <TabsList className="m-2 mb-0 shrink-0">
+          <TabsTrigger value="library" className="flex-1">
+            <Layers className="size-3.5" />
+            Library
+          </TabsTrigger>
+          <TabsTrigger value="devices" className="flex-1">
+            <Server className="size-3.5" />
+            Devices
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="library" className="m-0 flex-1 overflow-hidden">
+          <DeviceLibrary
+            onPick={(t) => {
+              setCreateOpen(true)
+              // After dialog opens, set the initial template ID by reusing
+              // the existing CreateDeviceDialog flow with default name.
+              void t
+              onItemPicked?.()
+            }}
+          />
+        </TabsContent>
+
+        <TabsContent value="devices" className="m-0 flex-1 overflow-y-auto p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              In this rack
+            </h3>
+            <div className="flex items-center gap-1">
+              {writable && (
+                <Button
+                  size="sm"
+                  variant={connectMode ? 'default' : 'ghost'}
+                  onClick={() => {
+                    if (connectMode) {
+                      exitConnectMode()
+                    } else {
+                      enterConnectMode()
+                    }
+                    onItemPicked?.()
+                  }}
+                  className="h-9 min-h-9 px-2 sm:h-7"
+                  title="Click two ports to connect them"
+                >
+                  <PlugZap className="size-3.5" />
+                  Connect
+                </Button>
+              )}
+              {writable && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setCreateOpen(true)
+                    onItemPicked?.()
+                  }}
+                  className="h-9 min-h-9 px-2 sm:h-7"
+                >
+                  <Plus className="size-3.5" />
+                  Device
+                </Button>
+              )}
+            </div>
           </div>
-          <span
-            className="ml-1 flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-            title="All changes are saved"
-          >
-            <Check className="size-3" />
-            Saved
-          </span>
-        </div>
-      </div>
-
-      <div className="flex min-h-0 flex-1 overflow-y-auto">
-        <aside className="flex w-72 shrink-0 flex-col border-r border-slate-200 dark:border-slate-800">
-          <Tabs defaultValue="library" className="flex h-full flex-col">
-            <TabsList className="m-2 mb-0 shrink-0">
-              <TabsTrigger value="library" className="flex-1">
-                <Layers className="size-3.5" />
-                Library
-              </TabsTrigger>
-              <TabsTrigger value="devices" className="flex-1">
-                <Server className="size-3.5" />
-                Devices
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="library" className="m-0 flex-1 overflow-hidden">
-              <DeviceLibrary
-                onPick={(t) => {
-                  setCreateOpen(true)
-                  // After dialog opens, set the initial template ID by reusing
-                  // the existing CreateDeviceDialog flow with default name.
-                  void t
-                }}
-              />
-            </TabsContent>
-
-            <TabsContent value="devices" className="m-0 flex-1 overflow-y-auto p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  In this rack
-                </h3>
-                <div className="flex items-center gap-1">
-                  {writable && (
-                    <Button
-                      size="sm"
-                      variant={connectMode ? 'default' : 'ghost'}
-                      onClick={() =>
-                        connectMode ? exitConnectMode() : enterConnectMode()
-                      }
-                      className="h-7 px-2"
-                      title="Click two ports to connect them"
-                    >
-                      <PlugZap className="size-3.5" />
-                      Connect
-                    </Button>
-                  )}
-                  {writable && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setCreateOpen(true)}
-                      className="h-7 px-2"
-                    >
-                      <Plus className="size-3.5" />
-                      Device
-                    </Button>
-                  )}
-                </div>
-              </div>
           <ul className="space-y-1.5">
             {devices
               .slice()
@@ -315,6 +258,7 @@ export function RackDetailPage() {
                       onClick={() => {
                         selectDevice(d.id)
                         setTab('ports')
+                        onItemPicked?.()
                       }}
                       className="min-w-0 flex-1 text-left"
                     >
@@ -346,8 +290,9 @@ export function RackDetailPage() {
                           onClick={(e) => {
                             e.stopPropagation()
                             setNotesTargetId(d.id)
+                            onItemPicked?.()
                           }}
-                          className="rounded p-1 text-slate-700 hover:bg-white/40 dark:text-slate-200"
+                          className="grid size-9 place-items-center rounded text-slate-700 hover:bg-white/40 sm:size-7 sm:p-1 dark:text-slate-200"
                           title="Notes & history"
                         >
                           <FileText className="size-3" />
@@ -356,8 +301,9 @@ export function RackDetailPage() {
                           onClick={(e) => {
                             e.stopPropagation()
                             setEditTargetId(d.id)
+                            onItemPicked?.()
                           }}
-                          className="rounded p-1 text-slate-700 hover:bg-white/40 dark:text-slate-200"
+                          className="grid size-9 place-items-center rounded text-slate-700 hover:bg-white/40 sm:size-7 sm:p-1 dark:text-slate-200"
                           title="Edit device"
                         >
                           <Pencil className="size-3" />
@@ -368,27 +314,199 @@ export function RackDetailPage() {
                 </li>
               ))}
           </ul>
-            </TabsContent>
-          </Tabs>
-        </aside>
+        </TabsContent>
+      </Tabs>
+    )
 
-        <ToolsToolbar
-          zoomPercent={Math.round(zoom * 100)}
-          onZoomIn={() => setZoom((z) => Math.min(2, Math.round(z * 1.2 * 100) / 100))}
-          onZoomOut={() => setZoom((z) => Math.max(0.4, Math.round(z / 1.2 * 100) / 100))}
-          onResetZoom={() => setZoom(1)}
-          onFullscreen={() => setFullscreen((v) => !v)}
-          onFitWidth={() => setZoom(0.5)}
-          onFitHeight={() => setZoom(1)}
-        />
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        {/* Rack header. On mobile this wraps to two rows so the breadcrumb,
+            zoom controls, front/rear toggle, and Saved indicator all stay
+            reachable without horizontal scroll. The Library + Settings
+            affordances are the only mobile-only entries here. */}
+        <div className="flex flex-col gap-1 border-b border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between sm:gap-2 sm:px-4">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-slate-500">
+            <Button asChild variant="ghost" size="sm" className="min-h-9">
+              <Link to="/racks">
+                <ArrowLeft className="size-4" />
+                <span className="hidden xs:inline sm:inline">Racks</span>
+              </Link>
+            </Button>
+            <span className="hidden sm:inline">/</span>
+            <span className="min-w-0 truncate font-medium text-slate-900 dark:text-slate-100">
+              {rack.name}
+            </span>
+            {isMobile && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setLibraryOpen(true)}
+                className="ml-auto h-9 px-2"
+                aria-label="Open device library"
+              >
+                <Layers className="size-3.5" />
+                Library
+              </Button>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="text-[11px]">
+              {usedU} / {rack.uHeight}U used
+            </Badge>
+            {(() => {
+              const watts = devices.reduce((s, d) => s + (d.wattage ?? 0), 0)
+              const budget = rack.powerBudgetWatts ?? rack.uHeight * 100
+              const pct = budget > 0 ? Math.min(100, Math.round((watts / budget) * 100)) : 0
+              const danger = pct >= 90
+              const warn = pct >= 70
+              return (
+                <div
+                  className={`flex items-center gap-2 rounded-md border px-2 py-0.5 text-xs ${
+                    danger
+                      ? 'border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-700/50 dark:bg-rose-950/40 dark:text-rose-200'
+                      : warn
+                        ? 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-700/50 dark:bg-amber-950/40 dark:text-amber-200'
+                        : 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700/50 dark:bg-emerald-950/40 dark:text-emerald-200'
+                  }`}
+                  title={`Power budget: ${watts}W used of ${budget}W`}
+                >
+                  <span className="font-mono">{watts}W</span>
+                  <div className="h-1.5 w-16 overflow-hidden rounded-full bg-white/40">
+                    <div
+                      className="h-full bg-current"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="font-mono">{pct}%</span>
+                </div>
+              )
+            })()}
+            {isMobile ? (
+              // Compact zoom row — replaces the vertical tools toolbar on phones
+              // so it doesn't eat a 40px column from the 375px viewport.
+              <div className="flex items-center gap-1 rounded-md border border-slate-300 bg-white p-0.5 text-xs dark:border-slate-700 dark:bg-slate-900">
+                <button
+                  onClick={() => setZoom((z) => Math.max(0.4, Math.round(z / 1.2 * 100) / 100))}
+                  className="grid size-7 place-items-center rounded text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                  aria-label="Zoom out"
+                >
+                  −
+                </button>
+                <button
+                  onClick={() => setZoom(1)}
+                  className="rounded px-1.5 py-0.5 font-mono tabular-nums text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                  aria-label="Reset zoom"
+                  title="Reset zoom"
+                >
+                  {Math.round(zoom * 100)}%
+                </button>
+                <button
+                  onClick={() => setZoom((z) => Math.min(2, Math.round(z * 1.2 * 100) / 100))}
+                  className="grid size-7 place-items-center rounded text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                  aria-label="Zoom in"
+                >
+                  +
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 rounded-md border border-slate-300 bg-white p-0.5 text-xs dark:border-slate-700 dark:bg-slate-900">
+                {(['front', 'rear'] as const).map((side) => (
+                  <button
+                    key={side}
+                    onClick={() => setView(side)}
+                    className={`rounded px-2 py-0.5 ${
+                      view === side
+                        ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200'
+                        : 'text-slate-600 dark:text-slate-300'
+                    }`}
+                  >
+                    {side === 'front' ? 'Front' : 'Rear'}
+                  </button>
+                ))}
+              </div>
+            )}
+            {!isMobile && (
+              <span
+                className="ml-1 flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                title="All changes are saved"
+              >
+                <Check className="size-3" />
+                Saved
+              </span>
+            )}
+            {isMobile && (
+              <Button
+                size="sm"
+                variant={selectedDeviceId ? 'default' : 'outline'}
+                onClick={() => setSettingsOpen(true)}
+                disabled={!selectedDeviceId}
+                className="h-9 px-2"
+                aria-label="Open device settings"
+                title={selectedDeviceId ? 'Open device settings' : 'Select a device first'}
+              >
+                <SlidersHorizontal className="size-3.5" />
+                Settings
+              </Button>
+            )}
+          </div>
+          {/* Second row on mobile: front/rear toggle + Saved indicator, kept
+              separate so the row above doesn't get crowded at 375px. */}
+          {isMobile && (
+            <div className="flex items-center gap-2 sm:hidden">
+              <div className="flex items-center gap-1 rounded-md border border-slate-300 bg-white p-0.5 text-xs dark:border-slate-700 dark:bg-slate-900">
+                {(['front', 'rear'] as const).map((side) => (
+                  <button
+                    key={side}
+                    onClick={() => setView(side)}
+                    className={`rounded px-2 py-1 ${
+                      view === side
+                        ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200'
+                        : 'text-slate-600 dark:text-slate-300'
+                    }`}
+                  >
+                    {side === 'front' ? 'Front' : 'Rear'}
+                  </button>
+                ))}
+              </div>
+              <span
+                className="flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                title="All changes are saved"
+              >
+                <Check className="size-3" />
+                Saved
+              </span>
+            </div>
+          )}
+        </div>
 
-        <DeviceSettingsPanel
-          deviceId={selectedDeviceId}
-          onClose={() => useEditorStore.getState().selectDevice(null)}
-        />
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+              {!isMobile && (
+                <aside className="flex w-72 shrink-0 flex-col border-r border-slate-200 dark:border-slate-800">
+                  {renderLibraryPanel()}
+                </aside>
+              )}
+
+              {!isMobile && (
+                <ToolsToolbar
+                  zoomPercent={Math.round(zoom * 100)}
+                  onZoomIn={() => setZoom((z) => Math.min(2, Math.round(z * 1.2 * 100) / 100))}
+                  onZoomOut={() => setZoom((z) => Math.max(0.4, Math.round(z / 1.2 * 100) / 100))}
+                  onResetZoom={() => setZoom(1)}
+                  onFullscreen={() => setFullscreen((v) => !v)}
+                  onFitWidth={() => setZoom(0.5)}
+                  onFitHeight={() => setZoom(1)}
+                />
+              )}
+
+              {!isMobile && (
+                <DeviceSettingsPanel
+                  deviceId={selectedDeviceId}
+                  onClose={() => useEditorStore.getState().selectDevice(null)}
+                />
+              )}
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex overflow-x-auto border-b border-slate-200 bg-white px-2 md:px-4 dark:border-slate-800 dark:bg-slate-900">
             <TabButton active={tab === 'overview'} onClick={() => setTab('overview')} icon={Info} label="Overview" />
             <TabButton active={tab === 'ports'} onClick={() => setTab('ports')} icon={Plug} label="Ports" />
             <TabButton active={tab === 'connections'} onClick={() => setTab('connections')} icon={Cable} label="Connections" />
@@ -396,7 +514,7 @@ export function RackDetailPage() {
             <TabButton active={tab === 'history'} onClick={() => setTab('history')} icon={History} label="History" />
           </div>
 
-          <div className="min-h-0 flex-1 overflow-auto p-4">
+          <div className="min-h-0 flex-1 overflow-auto p-3 md:p-4">
             {tab === 'overview' && (
               <div
                 className={`rounded-lg border border-slate-200 bg-white p-4 transition-transform dark:border-slate-800 dark:bg-slate-900 ${
@@ -585,7 +703,7 @@ export function RackDetailPage() {
                 </div>
 
                 {connectionsSubTab === 'devices' && (
-                  <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
+                  <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
                     <table className="w-full text-sm">
                       <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500 dark:bg-slate-800/50">
                         <tr>
@@ -663,7 +781,7 @@ export function RackDetailPage() {
                         return (
                           <div
                             key={c.id}
-                            className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-xs dark:border-slate-800"
+                            className="flex flex-wrap items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-xs dark:border-slate-800"
                           >
                             <span
                               className="size-3 rounded"
@@ -676,7 +794,7 @@ export function RackDetailPage() {
                               {c.kind}
                               {c.lengthM ? ` · ${c.lengthM}m` : ''}
                             </span>
-                            <span className="ml-auto font-mono text-slate-500">
+                            <span className="w-full break-all font-mono text-slate-500 sm:ml-auto sm:w-auto">
                               {devA?.name}.{portA?.label} ↔ {devB?.name}.{portB?.label}
                             </span>
                           </div>
@@ -739,6 +857,29 @@ export function RackDetailPage() {
         portA={confirmPortA}
         portB={confirmPortBRef}
       />
+
+      {isMobile && (
+        <>
+          <Dialog open={libraryOpen} onOpenChange={setLibraryOpen}>
+            <DialogContent
+              showCloseButton={false}
+              className="inset-x-0 bottom-0 left-0 top-auto flex h-[85dvh] max-h-[85dvh] w-full max-w-none translate-x-0 translate-y-0 flex-col rounded-b-none rounded-t-xl p-0"
+            >
+              <DialogTitle className="border-b border-slate-200 px-4 py-3 text-sm dark:border-slate-800">
+                Device library
+              </DialogTitle>
+              <div className="min-h-0 flex-1 overflow-hidden">
+                {renderLibraryPanel(() => setLibraryOpen(false))}
+              </div>
+            </DialogContent>
+          </Dialog>
+          <DeviceSettingsPanel
+            variant="mobile"
+            deviceId={settingsOpen ? selectedDeviceId : null}
+            onClose={() => setSettingsOpen(false)}
+          />
+        </>
+      )}
     </div>
   )
 }

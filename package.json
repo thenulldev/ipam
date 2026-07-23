@@ -31,7 +31,10 @@
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f ipam",
-    "docker:smoke": "npm run smoke"
+    "docker:smoke": "npm run smoke",
+    "e2e": "playwright test",
+    "e2e:install": "playwright install chromium",
+    "e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -70,6 +73,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "@hono/node-server": "^2.0.9",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/vite": "^4.0.0",
     "@tanstack/router-cli": "^1.95.0",
     "@tanstack/router-plugin": "^1.95.0",

@@ -58,11 +58,11 @@ export function TemplatesPage() {
   }, [filtered])
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-end justify-between gap-4">
-        <div>
+    <div className="space-y-6 p-4 md:p-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between md:gap-4">
+        <div className="min-w-0">
           <h1 className="flex items-center gap-2 text-2xl font-semibold">
-            <ClipboardList className="size-6 text-slate-400" />
+            <ClipboardList className="size-6 shrink-0 text-slate-400" />
             Device Templates
           </h1>
           <p className="text-sm text-slate-500">
@@ -70,13 +70,13 @@ export function TemplatesPage() {
             more. Library templates are available to every tenant.
           </p>
         </div>
-        <div className="relative">
+        <div className="relative w-full md:w-72">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <Input
             placeholder="Search templates…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-72 pl-9"
+            className="w-full pl-9 md:w-72"
           />
         </div>
       </div>

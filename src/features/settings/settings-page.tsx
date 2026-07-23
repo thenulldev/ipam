@@ -34,7 +34,7 @@ export function SettingsPage() {
   const [tab, setTab] = useState('overview')
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 md:p-6">
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-semibold">
           <UserCog className="size-6 text-slate-400" />
@@ -46,7 +46,7 @@ export function SettingsPage() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
+        <TabsList className="max-w-full overflow-x-auto whitespace-nowrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="users">Users & roles</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
@@ -64,8 +64,8 @@ export function SettingsPage() {
               {tenants
                 .filter((t) => t.id === currentTenantId)
                 .map((t) => (
-                  <div key={t.id} className="flex items-center justify-between">
-                    <div>
+                  <div key={t.id} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
                       <div className="font-medium">{t.name}</div>
                       <div className="text-xs text-slate-500">
                         {t.description ?? 'No description'}
@@ -77,6 +77,7 @@ export function SettingsPage() {
                     </div>
                     <Badge
                       variant="outline"
+                      className="w-fit shrink-0"
                       style={{
                         background: t.brandColor ? `${t.brandColor}1f` : undefined,
                       }}
@@ -101,9 +102,9 @@ export function SettingsPage() {
               {tenantUsers.map((u) => (
                 <div
                   key={u.id}
-                  className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 dark:border-slate-800"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200 px-3 py-2 dark:border-slate-800"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
                     <Avatar
                       className="size-8"
                       style={{ background: u.avatarColor ?? '#94a3b8' }}
@@ -112,9 +113,9 @@ export function SettingsPage() {
                         {avatarInitials(u)}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
+                    <div className="min-w-0">
                       <div className="text-sm font-medium">{u.name}</div>
-                      <div className="text-xs text-slate-500">{u.email}</div>
+                      <div className="break-all text-xs text-slate-500">{u.email}</div>
                     </div>
                   </div>
                   <Badge variant={roleVariant[u.role] ?? 'outline'}>
@@ -143,12 +144,12 @@ export function SettingsPage() {
                   key={e.id}
                   className="rounded-md border border-slate-200 px-3 py-2 text-sm dark:border-slate-800"
                 >
-                  <div className="flex items-center gap-2 text-xs">
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
                     <Badge variant="outline" className="font-mono">{e.action}</Badge>
                     <span className="text-slate-500">
                       {e.entityType}:{e.entityId}
                     </span>
-                    <span className="ml-auto text-slate-500">
+                    <span className="w-full text-slate-500 sm:ml-auto sm:w-auto">
                       {new Date(e.createdAt).toLocaleString()}
                     </span>
                   </div>

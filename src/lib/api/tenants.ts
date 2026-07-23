@@ -7,55 +7,60 @@ import type {
   UserId,
   UserRole,
 } from '../types'
-import * as db from '../mock'
-import { delay } from './client'
+import { pick } from './adapter'
+import { api } from './http-client'
+import * as mock from './_mock/tenants'
 
-export async function listTenants(): Promise<Tenant[]> {
-  return delay(db.tenants)
+async function getOrUndefined<T>(path: string): Promise<T | undefined> {
+  try {
+    return await api.get<T>(path)
+  } catch (error) {
+    if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
+      return undefined
+    }
+    throw error
+  }
 }
 
-export async function getTenant(id: TenantId): Promise<Tenant | undefined> {
-  return delay(db.tenants.find((t) => t.id === id))
-}
+const liveListTenants = (): Promise<Tenant[]> => api.get('/api/tenants')
+const liveGetTenant = (id: TenantId): Promise<Tenant | undefined> =>
+  getOrUndefined(`/api/tenants/${encodeURIComponent(id)}`)
 
-export async function listUsers(opts?: { tenantId?: TenantId; role?: UserRole }): Promise<User[]> {
-  return delay(
-    db.users.filter(
-      (u) =>
-        (!opts?.tenantId || u.tenantId === opts.tenantId) &&
-        (!opts?.role || u.role === opts.role),
+const liveListUsers = (opts?: { tenantId?: TenantId; role?: UserRole }): Promise<User[]> =>
+  api.get<User[]>('/api/users').then((users) =>
+    users.filter(
+      (user) =>
+        (!opts?.tenantId || user.tenantId === opts.tenantId) &&
+        (!opts?.role || user.role === opts.role),
     ),
   )
-}
+const liveGetUser = (id: UserId): Promise<User | undefined> =>
+  getOrUndefined(`/api/users/${encodeURIComponent(id)}`)
 
-export async function getUser(id: UserId): Promise<User | undefined> {
-  return delay(db.users.find((u) => u.id === id))
-}
-
-// Library templates are merged with tenant-specific templates.
-export async function listDeviceTemplates(
-  tenantId?: TenantId,
-): Promise<DeviceTemplate[]> {
-  const library = db.deviceTemplates.filter(
-    (t) => t.tenantId === ('tenant-library' as TenantId),
-  )
-  const own = tenantId
-    ? db.deviceTemplates.filter((t) => t.tenantId === tenantId)
-    : []
-  // Deduplicate by id (favor own over library)
-  const seen = new Set<string>()
-  const merged: DeviceTemplate[] = []
-  for (const t of [...own, ...library]) {
-    if (!seen.has(t.id)) {
-      seen.add(t.id)
-      merged.push(t)
-    }
-  }
-  return delay(merged)
-}
-
-export async function getDeviceTemplate(
+const liveListDeviceTemplates = (tenantId?: TenantId): Promise<DeviceTemplate[]> =>
+  api.get<DeviceTemplate[]>('/api/device-templates').then((templates) => {
+    const libraryTenant = 'tenant-library' as TenantId
+    const selected = templates.filter(
+      (template) =>
+        template.tenantId === libraryTenant ||
+        (tenantId !== undefined && template.tenantId === tenantId),
+    )
+    return [...new Map(selected.map((template) => [template.id, template])).values()]
+  })
+const liveGetDeviceTemplate = (
   id: DeviceTemplateId,
-): Promise<DeviceTemplate | undefined> {
-  return delay(db.deviceTemplates.find((t) => t.id === id))
-}
+): Promise<DeviceTemplate | undefined> =>
+  getOrUndefined(`/api/device-templates/${encodeURIComponent(id)}`)
+
+export const listTenants = pick<typeof mock.listTenants>(liveListTenants, mock.listTenants)
+export const getTenant = pick<typeof mock.getTenant>(liveGetTenant, mock.getTenant)
+export const listUsers = pick<typeof mock.listUsers>(liveListUsers, mock.listUsers)
+export const getUser = pick<typeof mock.getUser>(liveGetUser, mock.getUser)
+export const listDeviceTemplates = pick<typeof mock.listDeviceTemplates>(
+  liveListDeviceTemplates,
+  mock.listDeviceTemplates,
+)
+export const getDeviceTemplate = pick<typeof mock.getDeviceTemplate>(
+  liveGetDeviceTemplate,
+  mock.getDeviceTemplate,
+)

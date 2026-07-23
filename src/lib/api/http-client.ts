@@ -33,6 +33,21 @@ function isFormData(value: unknown): value is FormData {
   return typeof FormData !== 'undefined' && value instanceof FormData
 }
 
+/**
+ * Broadcast a session-expiry signal on `window` so the auth route guard
+ * (NUL-50.2 / NUL-53) can react and bounce the user to /login?from=<current>.
+ *
+ * Wrapped in a `typeof window` guard so importing this module from a Node
+ * test harness (no DOM) doesn't crash. Tests that want to assert the
+ * dispatch can monkey-patch this export (see api-error-401.test.ts).
+ */
+export const SESSION_EXPIRED_EVENT = 'ipam:session-expired'
+
+export function dispatchSessionExpired(): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT))
+}
+
 function buildQuery(path: string, params?: Record<string, string | number | boolean | undefined>): string {
   if (!params) return path
   const search = new URLSearchParams()
@@ -70,6 +85,7 @@ export async function apiFetch<T>(
     headers,
     body: payload,
     signal: options.signal,
+    credentials: 'include',
   })
 
   const text = await res.text()
@@ -83,6 +99,24 @@ export async function apiFetch<T>(
   }
 
   if (!res.ok) {
+    // NUL-50.4 — surface a stale session to the auth guard as soon as any
+    // mutation returns 401. The guard (NUL-50.2 / NUL-53) listens for this
+    // event and bounces the user to /login?from=<current>.
+    //
+    // We deliberately only dispatch for `/api/**` routes that are NOT the
+    // login endpoint itself — the login page calls `fetch` directly (not
+    // `apiFetch`) so the `/api/auth/login` 401 never reaches here, but we
+    // also gate it explicitly so a future refactor can't accidentally
+    // dispatch `session-expired` for "wrong password" attempts on the login
+    // page and trigger a redirect loop.
+    if (
+      res.status === 401 &&
+      path.startsWith('/api/') &&
+      !path.startsWith('/api/auth/login')
+    ) {
+      dispatchSessionExpired()
+    }
+
     const errBody = (parsed ?? {}) as ApiErrorBody
     const message =
       errBody.message ??

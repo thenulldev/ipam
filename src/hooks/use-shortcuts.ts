@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 
 /** Global keyboard shortcuts. The hook attaches a single `keydown` listener
@@ -32,6 +32,11 @@ export interface ShortcutsOptions {
 export function useShortcuts(opts: ShortcutsOptions): ShortcutsApi {
   const navigate = useNavigate()
   const [awaitingChord, setAwaitingChord] = useState(false)
+  // Ref so the keydown handler reads the latest chord state without
+  // re-binding the listener on every chord transition (which would lose
+  // key events during the rebind).
+  const awaitingChordRef = useRef(awaitingChord)
+  awaitingChordRef.current = awaitingChord
 
   useEffect(() => {
     let chordTimer: ReturnType<typeof setTimeout> | null = null
@@ -63,7 +68,7 @@ export function useShortcuts(opts: ShortcutsOptions): ShortcutsApi {
         return
       }
 
-      if (awaitingChord) {
+      if (awaitingChordRef.current) {
         const chordMap: Record<string, () => void> = {
           i: () => navigate({ to: '/ipam' }),
           r: () => navigate({ to: '/racks' }),

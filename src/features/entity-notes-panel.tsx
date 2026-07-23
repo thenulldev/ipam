@@ -173,7 +173,6 @@ export function EntityNotesPanel({ entityType, entityId, entityLabel }: Props) {
               key={img.id}
               className="overflow-hidden rounded-md border border-slate-200 dark:border-slate-800"
             >
-              {/* eslint-disable-next-line jsx-a11y/alt-text */}
               <img
                 src={img.url}
                 alt={img.caption ?? ''}

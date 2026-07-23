@@ -204,7 +204,7 @@ export function FloorplanCanvas({
   return (
     <div
       ref={containerRef}
-      className={`relative h-full w-full overflow-hidden bg-slate-50 dark:bg-slate-950 ${dragOver ? 'ring-2 ring-brand-500 ring-inset' : ''}`}
+      className={`relative h-full min-h-[28rem] w-full touch-none overflow-hidden bg-slate-50 dark:bg-slate-950 ${dragOver ? 'ring-2 ring-brand-500 ring-inset' : ''}`}
     >
       <div className="grid-bg pointer-events-none absolute inset-0 opacity-50" />
       <Stage

@@ -97,7 +97,7 @@ export const rackReservations: RackReservation[] = [
     uHeight: 2,
     label: 'Reserved: DR test server',
     color: '#a855f7',
-    reservedById: id.user('user-internal-admin'),
+    reservedById: id.user('user-stephan'),
     reservedAt: new Date(now - 12 * day).toISOString(),
   },
   {

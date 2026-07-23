@@ -19,6 +19,21 @@ export const users = sqliteTable('users', {
   email: text('email').notNull(),
   role: text('role').notNull(), // 'admin' | 'editor' | 'viewer'
   avatarColor: text('avatar_color'),
+  /**
+   * scrypt password hash, encoded as `scrypt$N$r$p$<saltB64>$<hashB64>`.
+   * Nullable so legacy seeded rows keep working until the next seed/login.
+   * Filled by `src/server/seed.ts` for dev users; production users get theirs
+   * set via the future admin UI (NUL-12 follow-up).
+   */
+  passwordHash: text('password_hash'),
+  /**
+   * ISO 8601 timestamp the user finished (or skipped) the NUL-51 product tour.
+   * `null` = never completed. Written by `PATCH /api/users/:id` and returned
+   * by `GET /api/auth/me` so the client can prefer the server value over
+   * the localStorage flag (NUL-51.E / NUL-59). Column is nullable so legacy
+   * rows don't need a backfill.
+   */
+  onboardingCompletedAt: text('onboarding_completed_at'),
 })
 
 export const sites = sqliteTable('sites', {
@@ -125,6 +140,15 @@ export const vrfs = sqliteTable('vrfs', {
   tenantId: text('tenant_id').notNull().references(() => tenants.id),
   name: text('name').notNull(),
   rd: text('rd'),
+  description: text('description'),
+})
+
+export const vlans = sqliteTable('vlans', {
+  id: text('id').primaryKey(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  vrfId: text('vrf_id').references(() => vrfs.id),
+  vid: integer('vid').notNull(),
+  name: text('name').notNull(),
   description: text('description'),
 })
 

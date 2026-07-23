@@ -95,36 +95,52 @@ export function PatchesPage() {
   }
 
   return (
-    <div className="space-y-4 p-6">
-      <div className="flex items-center justify-between">
-        <div>
+    <div className="space-y-4 p-4 md:p-6">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-semibold">Patches</h1>
           <p className="text-sm text-slate-500">
             Every patch cable and its end-points. Click a port to trace its full
             chain.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap">
           <Input
             placeholder="Filter by label, port, type…"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="max-w-xs"
+            className="w-full sm:max-w-xs sm:flex-1"
           />
           {writable && (
-            <Button size="sm" onClick={() => setAddOpen(true)}>
+            <Button
+              size="sm"
+              onClick={() => setAddOpen(true)}
+              className="w-full sm:w-auto"
+            >
               <Plus className="size-4" />
               Connect ports
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={onExportCsv}>
-            <Download className="size-4" />
-            CSV
-          </Button>
-          <Button variant="outline" size="sm" onClick={onExportJson}>
-            <Download className="size-4" />
-            JSON
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onExportCsv}
+              className="flex-1 sm:flex-none"
+            >
+              <Download className="size-4" />
+              CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onExportJson}
+              className="flex-1 sm:flex-none"
+            >
+              <Download className="size-4" />
+              JSON
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -137,8 +153,8 @@ export function PatchesPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+            <table className="min-w-[720px] w-full text-sm">
               <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500 dark:bg-slate-800/50">
                 <tr>
                   <th className="px-3 py-2">Label</th>

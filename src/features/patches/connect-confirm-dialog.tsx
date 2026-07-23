@@ -23,6 +23,7 @@ import { useConnectPorts } from '@/lib/queries'
 import { useTenantStore } from '@/store/tenant-store'
 import { useUsers } from '@/lib/queries'
 import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 import type { CableKind, PortId } from '@/lib/types'
 
 const schema = z.object({
@@ -90,7 +91,14 @@ export function ConnectConfirmDialog({ open, onOpenChange, portA, portB }: Props
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent
+        className={cn(
+          // On phones, stretch to a full-width bottom sheet so the form and
+          // its CTAs are reachable with one thumb. Escape/scrim/focus are
+          // preserved by Radix Dialog + the showCloseButton default.
+          'max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:left-0 max-md:right-0 max-md:translate-x-0 max-md:translate-y-0 max-md:max-w-none max-md:rounded-b-none max-md:rounded-t-xl max-md:max-h-[90vh] max-md:overflow-y-auto',
+        )}
+      >
         <DialogHeader>
           <DialogTitle>Connect ports</DialogTitle>
           <DialogDescription>
@@ -105,7 +113,7 @@ export function ConnectConfirmDialog({ open, onOpenChange, portA, portB }: Props
         </div>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="space-y-1">
               <Label>Type</Label>
               <Select

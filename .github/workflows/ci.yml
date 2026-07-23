@@ -46,11 +46,17 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Build
-        # Frontend bundle + compiled server both land under dist/ and
-        # server-build/; `build:all` is the explicit umbrella so a server
-        # compile regression is caught here, not on the next tagged release.
-        run: npm run build:all
+      - name: Test
+        run: npm test
+
+      - name: Client build
+        run: npm run build
+
+      - name: Server build
+        run: npm run build:server
+
+      - name: Clean database smoke
+        run: npm run clean-db-smoke
 
       # Guard against accidentally shipping the local SQLite file. The
       # build never writes one in CI, but tracking it in git would push

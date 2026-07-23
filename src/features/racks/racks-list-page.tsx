@@ -10,6 +10,7 @@ import { useUsers } from '@/lib/queries'
 import { canWrite } from '@/lib/auth'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import type { Device } from '@/lib/types'
 
 export function RacksListPage() {
   const scope = useTenantScope()
@@ -39,7 +40,7 @@ export function RacksListPage() {
   }, [scope.racks, tagFilter, search])
 
   const filteredDevicesByRack = useMemo(() => {
-    const map = new Map<string, typeof scope.devices>()
+    const map = new Map<string, Device[]>()
     for (const r of filteredRacks) map.set(r.id, [])
     for (const d of scope.devices) {
       if (tagFilter && !d.tags.includes(tagFilter)) continue

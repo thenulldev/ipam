@@ -105,18 +105,18 @@ export function TopologyPage() {
   ).length
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
+    <div className="min-w-0 space-y-6 p-4 md:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
           <h1 className="flex items-center gap-2 text-2xl font-semibold">
-            <GitBranch className="size-6 text-slate-400" />
+            <GitBranch className="size-6 shrink-0 text-slate-400" />
             Network topology
           </h1>
           <p className="text-sm text-slate-500">
             VRFs, subnets, devices, and adjacencies in the current tenant.
           </p>
         </div>
-        <div className="flex gap-2 text-xs text-slate-500">
+        <div className="flex max-w-full flex-wrap gap-2 text-xs text-slate-500">
           <Badge variant="outline">
             <Layers className="mr-1 size-3" />
             {byVrf.length} VRF
@@ -148,7 +148,7 @@ export function TopologyPage() {
         />
       ))}
 
-      <Card>
+      <Card className="min-w-0">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Link2 className="size-4 text-slate-400" />
@@ -169,12 +169,12 @@ export function TopologyPage() {
                 return (
                   <li
                     key={devId}
-                    className="rounded-md border border-slate-200 p-2 text-xs dark:border-slate-800"
+                    className="min-w-0 rounded-md border border-slate-200 p-2 text-xs dark:border-slate-800"
                   >
                     <Link
                       to="/racks/$rackId"
                       params={{ rackId: dev.rackId }}
-                      className="font-medium hover:underline"
+                      className="break-words font-medium hover:underline"
                     >
                       {dev.name}
                     </Link>
@@ -182,7 +182,7 @@ export function TopologyPage() {
                     {peers.map(({ peer, port, cable }) => (
                       <span
                         key={cable.id + peer.id}
-                        className="ml-1 inline-flex items-center gap-0.5 font-mono"
+                        className="ml-1 inline-flex max-w-full items-center gap-0.5 break-words font-mono"
                       >
                         {peer.name}.{port.label}
                       </span>
@@ -212,7 +212,7 @@ function VrfCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex flex-wrap items-center gap-2">
           <Layers className="size-4 text-slate-400" />
           VRF: {vrfBlock.vrf?.name ?? 'default'}
           {vrfBlock.vrf?.rd && (
@@ -220,7 +220,7 @@ function VrfCard({
               RD {vrfBlock.vrf.rd}
             </Badge>
           )}
-          <span className="ml-auto text-xs text-slate-500">
+          <span className="w-full text-xs text-slate-500 sm:ml-auto sm:w-auto">
             {vrfBlock.subnets.length} subnets
           </span>
         </CardTitle>
@@ -251,7 +251,7 @@ function SubnetCard({
   const free = subnet.addresses.filter((a) => a.status === 'free').length
   return (
     <div className="rounded-md border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Network className="size-3.5 text-slate-400" />
         <span className="font-mono text-sm font-semibold">
           {subnet.prefix.cidr}
@@ -294,7 +294,7 @@ function SubnetCard({
                 key={device.id}
                 className="rounded border border-slate-200 bg-slate-50 p-1.5 text-[11px] dark:border-slate-800 dark:bg-slate-800/40"
               >
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <Server className="size-3 text-slate-400" />
                   <Link
                     to="/racks/$rackId"
@@ -314,7 +314,7 @@ function SubnetCard({
                   ))}
                 </div>
                 {peers.length > 0 && (
-                  <div className="ml-4 mt-0.5 text-[10px] text-slate-500">
+                  <div className="ml-4 mt-0.5 break-words text-[10px] text-slate-500">
                     ↳ {peers.length} peer
                     {peers.length === 1 ? '' : 's'}:{' '}
                     {peers

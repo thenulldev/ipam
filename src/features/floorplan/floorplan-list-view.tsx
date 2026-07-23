@@ -25,7 +25,7 @@ const kindColor: Record<string, string> = {
 export function FloorplanListView() {
   const scope = useTenantScope()
   return (
-    <div className="space-y-4 p-4">
+    <div className="min-h-full space-y-4 overflow-y-auto p-4">
       <div>
         <h1 className="text-2xl font-semibold">Floorplans</h1>
         <p className="text-sm text-slate-500">
@@ -49,10 +49,10 @@ export function FloorplanListView() {
         return (
           <Card key={fp.id}>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex min-w-0 flex-wrap items-center gap-2">
                 <Building2 className="size-4 text-slate-400" />
-                {fp.name}
-                <Badge variant="outline" className="ml-auto">
+                <span className="min-w-0 truncate">{fp.name}</span>
+                <Badge variant="outline" className="sm:ml-auto">
                   {racksOnFp.length} racks · {totalDevices} devices
                 </Badge>
               </CardTitle>
@@ -71,9 +71,9 @@ export function FloorplanListView() {
                     params={{ rackId: rack.id }}
                     className="block rounded-md border border-slate-200 p-3 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800"
                   >
-                    <div className="mb-2 flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">{rack.name}</div>
+                    <div className="mb-2 flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">{rack.name}</div>
                         <div className="text-xs text-slate-500">
                           {usedU} / {rack.uHeight}U · {watts}W
                         </div>

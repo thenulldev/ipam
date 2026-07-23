@@ -1,0 +1,102 @@
+import { useEffect, type ReactNode } from 'react'
+import { useNavigate, useLocation } from '@tanstack/react-router'
+
+import { useCurrentUser } from './use-current-user'
+import {
+  decideRedirect,
+  safePostLoginTarget,
+  type RedirectInputs,
+} from './route-guard-logic'
+import { Skeleton } from '@/components/ui/skeleton'
+
+/**
+ * Top-level auth gate (NUL-50.2 / NUL-53).
+ *
+ * Wraps the routed outlet so every navigation runs through the same session
+ * check. The decision logic lives in `./route-guard-logic.ts` (a pure TS
+ * module with no React/JSX/aliased imports) so it can be exercised under
+ * `node --test`. The component here is a thin effect + render wrapper.
+ *
+ * Behaviour:
+ *
+ *   1. While `/api/auth/me` is still loading, render a splash skeleton so the
+ *      user doesn't see a flash of the wrong page.
+ *   2. On 401, bounce to `/login` with `?from=<current>`.
+ *   3. While on `/login` with a valid session, send them to `from` (or `/`).
+ *   4. Otherwise render children.
+ *
+ * The NUL-50 plan mentioned both a `<AuthGuard>` component and a `beforeLoad`
+ * on the root route. We use the component form because TanStack Router
+ * `beforeLoad` runs before data fetching and we want a single shared `/me`
+ * query — multiple guards would each fire their own request.
+ */
+export function AuthGuard({ children }: { children: ReactNode }) {
+  const me = useCurrentUser()
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  const currentPath = location.pathname
+  const currentSearch = location.searchStr ?? ''
+
+  useEffect(() => {
+    const decision = decideRedirect({
+      isLoading: me.isLoading,
+      isAuthenticated: me.isSuccess,
+      currentPath,
+      currentSearch,
+      currentSearchObj: location.search,
+    } satisfies RedirectInputs)
+    if (!decision) return
+
+    if (decision.kind === 'to-login') {
+      void navigate({
+        to: '/login',
+        search: { from: decision.from },
+        replace: true,
+      })
+      return
+    }
+
+    if (decision.kind === 'to-from') {
+      void navigate({ to: decision.to, replace: true })
+    }
+  }, [
+    me.isLoading,
+    me.isSuccess,
+    currentPath,
+    currentSearch,
+    location.search,
+    navigate,
+  ])
+
+  if (me.isLoading) {
+    return <AuthSplash />
+  }
+
+  if (me.isError) {
+    const status = (me.error as { status?: number } | null)?.status
+    if (status === 401) return <AuthSplash />
+  }
+
+  return <>{children}</>
+}
+
+/**
+ * Splash shown while the session is being resolved. Matches the visual
+ * language of the existing skeleton primitives so it doesn't feel like an
+ * error state.
+ */
+function AuthSplash() {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-slate-50 p-6 dark:bg-slate-950">
+      <div className="flex w-full max-w-sm flex-col gap-3">
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-5/6" />
+        <Skeleton className="h-3 w-2/3" />
+      </div>
+    </div>
+  )
+}
+
+export { safePostLoginTarget }

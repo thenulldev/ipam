@@ -10,18 +10,24 @@ quick start.
 
 ## TL;DR — the PR bar
 
-A PR is approvable when **all five** of these are true:
+A PR is approvable when **all of these** are true:
 
 1. `npm run lint` is clean.
 2. `npm run typecheck` is clean.
-3. `npm run build` is clean.
-4. If `src/server/schema.ts` changed, the matching Drizzle migration is in
-   the same PR (`drizzle/<NNNN>_*.sql` plus a `drizzle-kit migrate` call
-   in the seed or migration runner).
-5. No new dependency was added without a comment in the PR explaining the
+3. `npm test` is clean (Node's `node --test` driver; covers
+   `src/lib/csv.test.ts`, `src/hooks/use-media-query.test.ts`, and
+   `src/server/__tests__/*.test.ts`).
+4. `npm run build` is clean (Vite bundle) and, if you touched
+   `src/server/**`, `npm run build:server` is also clean.
+5. If `src/server/schema.ts` changed, the schema-change steps under
+   [Schema changes](#schema-changes) were followed (this currently means
+   `drizzle-kit generate` will land the same commit once migrations are
+   introduced; in v0 the schema is bootstrapped via raw `CREATE TABLE`,
+   so a schema change ships with no SQL file — flag it in the PR).
+6. No new dependency was added without a comment in the PR explaining the
    size/weight tradeoff (production deps especially).
 
-CI runs the first three on every PR. The last two are reviewed manually.
+CI runs items 1-4 on every PR. The rest are reviewed manually.
 
 ---
 
@@ -41,18 +47,24 @@ CI runs the first three on every PR. The last two are reviewed manually.
 
 ## Local checks before pushing
 
-You can (and should) run the same three commands CI runs:
+You can (and should) run the same commands CI runs:
 
 ```bash
 npm run lint
 npm run typecheck
+npm test
 npm run build
+npm run build:server
 ```
 
-If you touched `src/server/**`, also run `npm run build:server` so the
-server actually compiles — the CI workflow does this implicitly via the
-release workflow, but lint/typecheck alone will not catch a server-only
-type error.
+Notes:
+
+- The test runner is Node's built-in `node --test`; `vitest` is installed
+  for coverage tooling but is not what gates CI. Use `npm run test:server`
+  if you only want the server suites.
+- `npm run build` does **not** build the server. Touching `src/server/**`
+  without running `npm run build:server` lets server-only type errors
+  slip into release artifacts.
 
 ---
 
@@ -73,14 +85,21 @@ type error.
 ## Schema changes
 
 `src/server/schema.ts` is the contract between the Hono API and the SQLite
-file. When you change it:
+file. **v0 reality:** `src/server/db.ts` bootstraps tables via raw
+`CREATE TABLE IF NOT EXISTS`, so a schema change today is "edit schema.ts
++ update `db.ts` in lockstep + tell reviewers". The
+`drizzle-kit generate` / `drizzle-kit migrate` flow will turn on once we
+land the `drizzle/` directory in v2 — the workflow below mirrors what that
+transition will look like, so a PR doesn't have to rewrite CONTRIBUTING
+on the day we flip the switch:
 
 ```bash
 # 1. Edit schema.ts.
-# 2. Generate the SQL migration:
-npx drizzle-kit generate
-# 3. Apply it to your local DB so you can dev against it:
-npx drizzle-kit migrate
+# 2. Update src/server/db.ts so the CREATE TABLE block matches the
+#    drizzle schema (v0); or, once v2 lands: drizzle-kit generate.
+# 3. For migrations specifically (post-v2):
+npx drizzle-kit generate           # writes SQL into drizzle/
+npx drizzle-kit migrate            # applies pending migrations
 # 4. Commit BOTH schema.ts AND the generated file under drizzle/.
 ```
 

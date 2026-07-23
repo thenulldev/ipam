@@ -1,0 +1,44 @@
+# Local Docker deployment. The image ships the compiled Hono server AND the
+# Vite-built frontend on a single port (8787); SQLite lives in a named volume.
+#
+# Bring it up:
+#   docker compose up -d
+#   docker compose ps            # confirm "(healthy)"
+#   npm run smoke                # scripts/smoke.ts -> http://localhost:8787
+#
+# Want to inspect the db from the host? Either exec into the container
+#   docker compose exec ipam sqlite3 /data/ipam.db ".tables"
+# or swap the named volume for a bind mount (commented below).
+services:
+  ipam:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ipam:local
+    ports:
+      - "8787:8787"
+    environment:
+      NODE_ENV: production
+      PORT: 8787
+      IPAM_DB: /data/ipam.db
+      IPAM_DATA_DIR: /data
+      IPAM_UPLOAD_DIR: /data/uploads
+      IPAM_DIST_DIR: /app/dist
+      # Required for any non-dev deployment. Replace via an .env file or
+      # `export IPAM_SESSION_SECRET=...` before `docker compose up`.
+      # Generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+      IPAM_SESSION_SECRET: ${IPAM_SESSION_SECRET:-replace-me-with-32-or-more-chars}
+    volumes:
+      - ipam-data:/data
+      # Bind-mount alternative — uncomment to expose the db on the host:
+      # - ./data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8787/healthz"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  ipam-data:

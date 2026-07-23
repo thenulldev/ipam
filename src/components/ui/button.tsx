@@ -25,6 +25,7 @@ const buttonVariants = cva(
         sm: 'h-8 px-3 text-xs',
         lg: 'h-10 px-6',
         icon: 'h-9 w-9',
+        tap: 'h-11 w-11',
       },
     },
     defaultVariants: { variant: 'default', size: 'default' },

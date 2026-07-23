@@ -1,0 +1,60 @@
+# IPAM systemd unit — for running the compiled Hono server directly on a
+# Linux host, an LXC container, or a Linux VM. Pairs with the env file at
+# /etc/ipam/ipam.env and the install script at scripts/install-systemd.sh.
+#
+# Install:
+#   sudo ./scripts/install-systemd.sh        # copies this + the env file, enables the unit
+#   sudo systemctl status ipam               # confirm green
+#   sudo journalctl -u ipam -f               # tail logs
+#
+# Update:
+#   sudo ./scripts/install-systemd.sh --update   # git pull + rebuild + restart
+
+[Unit]
+Description=IPAM (Hono + SQLite)
+Documentation=https://github.com/your-org/ipam
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ipam
+Group=ipam
+WorkingDirectory=/opt/ipam
+
+# Environment file. Keep secrets out of unit files; the env file is root:root 0640.
+EnvironmentFile=/etc/ipam/ipam.env
+
+# Production-only entrypoint — same as the Dockerfile's CMD. tsx is *not* used here.
+ExecStart=/usr/bin/env node server-build/server/index.js
+
+# Hardening — server only needs the data dir + the bind-mounted /opt/ipam tree.
+# No new privileges, no exec of arbitrary binaries, write only to /var/lib/ipam.
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+ReadWritePaths=/var/lib/ipam /opt/ipam/data
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictNamespaces=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+
+# SQLite + the uploaded-blobs dir are persistent state. Restart on crash,
+# back off, cap at 10 starts in 5 minutes to avoid crash-loop storms.
+Restart=on-failure
+RestartSec=5s
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+# Logs go to journald by default; nothing to configure.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ipam
+
+[Install]
+WantedBy=multi-user.target

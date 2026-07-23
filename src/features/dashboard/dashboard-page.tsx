@@ -38,7 +38,7 @@ export function DashboardPage() {
 
   if (scope.sites.length === 0) {
     return (
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <EmptyState
           icon={<Building2 className="size-6" />}
           title="No sites yet"
@@ -61,9 +61,9 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-end justify-between">
-        <div>
+    <div className="space-y-6 p-4 md:p-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-semibold">Dashboard</h1>
           <p className="text-sm text-slate-500">
             High-level inventory for the current tenant. Switch tenants from the
@@ -74,7 +74,7 @@ export function DashboardPage() {
 
       <ValidationBanner issues={issues} />
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 min-[390px]:grid-cols-2 md:grid-cols-4">
         <StatCard to="/racks" label="Racks" value={scope.racks.length} icon={Server} />
         <StatCard to="/racks" label="Devices" value={scope.devices.length} icon={Server} />
         <StatCard to="/patches" label="Cables" value={scope.cables.length} icon={Cable} />
@@ -177,14 +177,19 @@ export function DashboardPage() {
             <p className="text-xs text-slate-500">No sites in this tenant.</p>
           ) : (
             scope.sites.map((s) => (
-              <div key={s.id} className="flex items-center justify-between py-2">
-                <div>
+              <div
+                key={s.id}
+                className="flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
                   <div className="font-medium">{s.name}</div>
                   {s.address && (
-                    <div className="text-xs text-slate-500">{s.address}</div>
+                    <div className="truncate text-xs text-slate-500">
+                      {s.address}
+                    </div>
                   )}
                 </div>
-                <div className="flex gap-2 text-xs text-slate-500">
+                <div className="flex max-w-full flex-wrap gap-2 text-xs text-slate-500">
                   {Array.from(roomById.entries())
                     .filter(([, r]) => r.siteId === s.id)
                     .map(([id, r]) => (

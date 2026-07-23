@@ -31,7 +31,7 @@ export const tenants: Tenant[] = [
 export const users: User[] = [
   // Internal — HQ
   {
-    id: id.user('user-internal-admin'),
+    id: id.user('user-stephan'),
     tenantId: id.tenant('tenant-internal'),
     name: 'Stephan Frank',
     email: 'stephan@internal.example',

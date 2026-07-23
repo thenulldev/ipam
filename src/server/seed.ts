@@ -12,6 +12,7 @@ import {
   ports,
   cables,
   vrfs,
+  vlans,
   prefixes,
   ipAddresses,
   dhcpScopes,
@@ -22,6 +23,7 @@ import {
   changeEvents,
 } from './schema'
 import * as mock from '../lib/mock'
+import { DEV_DEFAULT_PASSWORD, hashPassword } from './auth'
 
 interface Counts {
   tenants: number
@@ -34,6 +36,18 @@ interface Counts {
 export function seedIfEmpty(): Counts {
   const existing = db.select().from(tenants).all()
   if (existing.length > 0) {
+    if (db.select().from(vlans).all().length === 0) {
+      for (const vlan of mock.vlans) {
+        db.insert(vlans).values({
+          id: vlan.id,
+          tenantId: vlan.tenantId,
+          vrfId: vlan.vrfId ?? null,
+          vid: vlan.vid,
+          name: vlan.name,
+          description: vlan.description ?? null,
+        }).run()
+      }
+    }
     return {
       tenants: existing.length,
       racks: db.select().from(racks).all().length,
@@ -54,6 +68,7 @@ export function seedIfEmpty(): Counts {
       createdAt: t.createdAt,
     }).run()
   }
+  const devPasswordHash = hashPassword(DEV_DEFAULT_PASSWORD)
   for (const u of mock.users) {
     db.insert(users).values({
       id: u.id,
@@ -62,8 +77,14 @@ export function seedIfEmpty(): Counts {
       email: u.email,
       role: u.role,
       avatarColor: u.avatarColor ?? null,
+      passwordHash: devPasswordHash,
     }).run()
   }
+  // eslint-disable-next-line no-console
+  console.log(
+    `[ipam] seeded ${mock.users.length} users with DEV password "${DEV_DEFAULT_PASSWORD}" — ` +
+      `change before any non-local environment.`,
+  )
   for (const s of mock.sites) {
     db.insert(sites).values({
       id: s.id,
@@ -86,7 +107,7 @@ export function seedIfEmpty(): Counts {
   for (const f of mock.floorplans) {
     db.insert(floorplans).values({
       id: f.id,
-      tenantId: f.tenantId as any, // mock floorplans don't have tenantId but the schema has it
+      tenantId: f.tenantId,
       roomId: f.roomId,
       name: f.name,
       imageUrl: f.imageUrl ?? null,
@@ -179,6 +200,16 @@ export function seedIfEmpty(): Counts {
       tenantId: 'tenant-internal', // mock vrfs don't have tenantId; default
       name: v.name,
       rd: v.rd ?? null,
+      description: v.description ?? null,
+    }).run()
+  }
+  for (const v of mock.vlans) {
+    db.insert(vlans).values({
+      id: v.id,
+      tenantId: v.tenantId,
+      vrfId: v.vrfId ?? null,
+      vid: v.vid,
+      name: v.name,
       description: v.description ?? null,
     }).run()
   }
@@ -296,3 +327,4 @@ export function seedIfEmpty(): Counts {
     cables: mock.cables.length,
   }
 }
+

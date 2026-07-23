@@ -63,4 +63,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 
 ENTRYPOINT ["/sbin/tini", "--"]
 # Production-only entrypoint: no watch, no tsx, just the compiled server.
-CMD ["node", "server-build/index.js"]
+CMD ["node", "server-build/server/index.js"]

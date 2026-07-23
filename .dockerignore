@@ -1,0 +1,38 @@
+# Build context hygiene — keep `docker build` cheap and reproducible.
+# Anything not needed for the final image goes here.
+
+# Local state we never want to bake in
+data/
+.paperclip/
+.paperclip-tmp/
+.tanstack/
+
+# Dev / IDE / VCS noise
+.git/
+.gitattributes
+.github/
+.github/workflows/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Build outputs the Dockerfile rebuilds itself
+dist/
+server-build/
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.tsbuildinfo
+
+# Test artifacts and coverage
+coverage/
+.nyc_output/
+
+# Docs that don't ship in the image
+README.md
+CONTRIBUTING.md
+docker-compose.yml
+Dockerfile
+.dockerignore

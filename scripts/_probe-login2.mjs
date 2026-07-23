@@ -1,0 +1,17 @@
+
+import { chromium } from '@playwright/test'
+const browser = await chromium.launch({ headless: true })
+const ctx = await browser.newContext()
+const page = await ctx.newPage()
+page.on('console', m => console.log('[console]', m.type(), m.text()))
+page.on('pageerror', e => console.log('[pageerror]', e.message))
+await page.goto('http://127.0.0.1:5173/login', { waitUntil: 'networkidle' })
+await page.waitForTimeout(2000)
+const body = await page.locator('body').innerHTML()
+console.log('BODY_START')
+console.log(body.substring(0, 3000))
+console.log('BODY_END')
+console.log('FULL_INPUTS:', await page.locator('input').count())
+console.log('FULL_BUTTONS:', await page.locator('button').count())
+console.log('INNER_TEXT:', (await page.locator('body').innerText()).substring(0, 500))
+await browser.close()

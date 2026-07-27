@@ -103,7 +103,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     }
   }, [currentPath, currentSearch, navigate, queryClient])
 
-  if (me.isLoading) {
+  if (me.isLoading && currentPath !== '/login') {
     return <AuthSplash />
   }
 

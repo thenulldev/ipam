@@ -107,7 +107,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     return <AuthSplash />
   }
 
-  if (me.isError) {
+  if (me.isError && currentPath !== '/login') {
     const status = (me.error as { status?: number } | null)?.status
     if (status === 401) return <AuthSplash />
   }

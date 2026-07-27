@@ -18,5 +18,16 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    // NUL-231: dev-only proxy so cookie-bearing /api fetches from :5173
+    // reach the Hono backend on :8787 same-origin, avoiding browser CORS
+    // preflight. Production is already same-origin (nginx serves SPA + /api
+    // from one host), so this block has no production effect.
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8787',
+        changeOrigin: false,
+        secure: false,
+      },
+    },
   },
 })

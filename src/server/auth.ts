@@ -315,8 +315,15 @@ authApp.post('/login', async (c) => {
 })
 
 authApp.post('/logout', (c) => {
+  // NUL-230: use c.body(null, 204) so the Set-Cookie header prepared by
+  // clearSessionCookie(c) is actually sent. Returning a bare
+  // `new Response(null, { status: 204 })` discards c.res.headers, so the
+  // browser kept its old ipam_session cookie and the next /api/auth/me
+  // request still succeeded (the user appeared to be "still logged in"
+  // after logout). See src/server/__tests__/auth-and-tenant.test.ts for
+  // the regression test.
   clearSessionCookie(c)
-  return new Response(null, { status: 204 })
+  return c.body(null, 204)
 })
 
 authApp.get('/me', requireAuth, (c) => {

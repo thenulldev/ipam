@@ -529,3 +529,85 @@ test('unauthenticated POST /api/upload returns 401', async () => {
     assert.equal(env.error.code, 'unauthenticated')
   })
 })
+
+// =============================================================================
+// 9. Logout actually clears the session cookie (NUL-230 regression)
+// =============================================================================
+//
+// Before the fix, the /api/auth/logout handler called clearSessionCookie(c)
+// to schedule a Set-Cookie header, but then returned a bare
+// `new Response(null, { status: 204 })` which dropped the prepared headers.
+// The browser kept the old ipam_session cookie and the next /api/auth/me
+// still returned 200, so the user appeared to still be logged in after
+// logout. The fix uses c.body(null, 204) so the Set-Cookie header is
+// actually included in the 204 response.
+
+test('POST /api/auth/logout returns 204 with a Set-Cookie that expires ipam_session', async () => {
+  await withFreshServer(async (h) => {
+    const cookie = await login(h.base, INTERNAL_ADMIN)
+    const r = await fetch(`${h.base}/api/auth/logout`, {
+      method: 'POST',
+      headers: { cookie },
+    })
+    assert.equal(r.status, 204)
+    const setCookie = r.headers.get('set-cookie') ?? ''
+    assert.ok(
+      setCookie.toLowerCase().includes('ipam_session='),
+      `expected logout response to include a Set-Cookie for ipam_session, got: ${setCookie}`,
+    )
+    assert.ok(
+      /(?:expires=|max-age=0|max-age=-?\d+)/i.test(setCookie),
+      `expected logout response Set-Cookie to expire the cookie (expires= or max-age<=0), got: ${setCookie}`,
+    )
+  })
+})
+
+test('GET /api/auth/me after /api/auth/logout returns 401 to clients that drop the cookie', async () => {
+  await withFreshServer(async (h) => {
+    const cookie = await login(h.base, INTERNAL_ADMIN)
+
+    // Sanity: /me works before logout.
+    const before = await fetch(`${h.base}/api/auth/me`, { headers: { cookie } })
+    assert.equal(before.status, 200)
+
+    // Logout. The response must clear the session cookie on the client
+    // (the previous /logout bug dropped the prepared Set-Cookie header).
+    const logout = await fetch(`${h.base}/api/auth/logout`, {
+      method: 'POST',
+      headers: { cookie },
+    })
+    assert.equal(logout.status, 204)
+    assert.ok(
+      (logout.headers.get('set-cookie') ?? '').toLowerCase().includes('ipam_session='),
+      'precondition: logout response must include Set-Cookie for ipam_session',
+    )
+
+    // Simulate what a real browser does on receiving that Set-Cookie:
+    // the cookie is removed from the jar, so the next /me request goes
+    // out with no cookie. The server must then return 401.
+    const after = await fetch(`${h.base}/api/auth/me`, {
+      headers: { /* no cookie */ },
+    })
+    assert.equal(
+      after.status,
+      401,
+      `expected /api/auth/me without cookie after logout to return 401, got ${after.status}`,
+    )
+  })
+})
+
+test('POST /api/auth/login still works after the logout fix (regression check)', async () => {
+  await withFreshServer(async (h) => {
+    // Login, logout, login again — the second login should still return
+    // 200 with a fresh session cookie, proving the logout fix didn't
+    // accidentally break the login path.
+    const cookie1 = await login(h.base, INTERNAL_ADMIN)
+    const logout = await fetch(`${h.base}/api/auth/logout`, {
+      method: 'POST',
+      headers: { cookie: cookie1 },
+    })
+    assert.equal(logout.status, 204)
+    const cookie2 = await login(h.base, INTERNAL_ADMIN)
+    assert.ok(cookie2.length > 0, 'second login should still return a session cookie')
+  })
+})

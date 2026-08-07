@@ -198,9 +198,11 @@ test('splash skeleton markup renders while /me is in a 401 error state', async (
     throw err
   }
 
-  // 401 from /me — the component renders <AuthSplash /> while the
-  // redirect effect runs. Once the effect fires (which we cannot
-  // observe under SSR), the location changes to /login.
+  const { __setLocation } = await import('../../../scripts/_test-mocks/router.mjs')
+  __setLocation({ pathname: '/login' })
+
+  // 401 from /me on the login route must not hide the destination form.
+  // The route guard's redirect effect treats /login as a no-op.
   globalThis.__routeGuardMeState = {
     isLoading: false,
     isSuccess: false,
@@ -214,8 +216,11 @@ test('splash skeleton markup renders while /me is in a 401 error state', async (
 
   const html = renderToStaticMarkup(createElement(AuthGuard, null, 'main-content'))
 
-  assert.match(html, /data-testid="skeleton"/)
-  assert.doesNotMatch(html, /main-content/)
+  // On /login the destination form must remain renderable even when the
+  // proxied /me request returns a typed 401. The guard's redirect effect
+  // already treats /login as a no-op; a splash here would hide the form.
+  assert.doesNotMatch(html, /data-testid="skeleton"/)
+  assert.match(html, /main-content/)
 })
 
 test.afterEach(() => {

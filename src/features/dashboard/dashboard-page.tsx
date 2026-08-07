@@ -118,8 +118,8 @@ export function DashboardPage() {
                     <span className="font-medium">{fp.name}</span>
                   </div>
                   <Badge variant="outline">
-                    {fp.rackPositions.length} rack
-                    {fp.rackPositions.length === 1 ? '' : 's'}
+                    {(fp.rackPositions ?? []).length} rack
+                    {(fp.rackPositions ?? []).length === 1 ? '' : 's'}
                   </Badge>
                 </div>
               ))}

@@ -8,11 +8,19 @@ import { defineConfig, devices } from '@playwright/test'
  * in another terminal first, or let the npm script `test:e2e` do it.
  *
  * Hostname note: the dev stack is reachable on either `127.0.0.1` or
- * `localhost`, but only `localhost` is in the Hono CORS allowlist
- * (NUL-11 — pre-existing dev-server CORS gap). Hitting `127.0.0.1` would
- * silently CORS-block every `/api/*` call, leaving the route-guard
- * splash stuck and every test waiting 60 s for an input that never
- * mounts. Pin `baseURL` + `PLAYWRIGHT_API_URL` to `localhost`.
+ * `localhost`. The Hono server deliberately serves no CORS headers
+ * (NUL-231 — adding dev CORS would weaken prod), so any browser fetch
+ * to http://127.0.0.1:8787 from a page on http://localhost:5173 (or
+ * vice versa) is preflight-blocked. Pin `baseURL` + `PLAYWRIGHT_API_URL`
+ * to `localhost` so every URL the browser sees has a single origin
+ * (after Vite proxies /api through to :8787 server-side).
+ *
+ * `--disable-web-security` on the projects below is intentionally kept
+ * because `tests/onboarding.spec.ts` issues fixture calls
+ * (`fetch(http://localhost:8787/...)` for the tour-reset PATCH) from
+ * inside the page evaluate; those are deliberately cross-origin and
+ * would need their own CORS or proxy rewrite to drop the flag. That
+ * refactor is out of scope for NUL-271 and tracked separately.
  *
  * Screenshot output: `test-results/onboarding/` so failures and the
  * deliberate capture step share a directory the CI workflow can archive.
@@ -39,10 +47,11 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 800 },
         colorScheme: 'light',
-        // NUL-11 dev CORS gap: the Hono server does not return CORS headers,
-        // and the Vite dev server has no /api proxy. Real deploys sit behind
-        // a same-origin reverse proxy so this is dev-only. `--disable-web-security`
-        // is safe here because the dev stack only listens on localhost.
+        // NUL-231: the prod path is same-origin (nginx serves SPA + /api),
+        // and the dev path is now also same-origin through Vite's /api proxy.
+        // `--disable-web-security` is still passed because tests/onboarding.spec.ts
+        // also issues direct :8787 fixture calls inside page.evaluate() that
+        // are deliberately cross-origin; see the file-header comment.
         launchOptions: { args: ['--disable-web-security'] },
       },
     },
